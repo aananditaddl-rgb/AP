@@ -140,3 +140,11 @@ tests/               DB integration tests and Playwright e2e
 - User-defined food categories (the `food_categories` table already supports per-user rows).
 - Friendly opt-in challenges between friends.
 - Native app wrappers if app-store distribution is needed.
+
+## Standalone web app (no sign-up)
+
+`standalone/` is a single-page version of Treatly that anyone can open, with no account or backend.
+Entries are saved privately in the person's own browser (with backup/restore on the Profile tab);
+friends invite each other and share monthly recaps over WhatsApp. It is published from the
+`gh-pages` branch to **https://aananditaddl-rgb.github.io/AP/**. To update it, copy `standalone/`
+to the `gh-pages` branch.

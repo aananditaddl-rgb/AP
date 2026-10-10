@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Track your cheat meals in seconds, set goals that fit your life, and share your progress with friends.">
+<meta name="theme-color" content="#fff8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17120f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Treatly">
+<meta property="og:title" content="Treatly">
+<meta property="og:description" content="Track your cheat meals in seconds and set goals that fit your life.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Treatly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+html{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}
+/* Layout: one phone-width column, cards stacked, fixed bottom tab bar. */
+:root{
+  --bg:#fff8f2;--surface:#fff;--surface-2:#fdf1e7;--ink:#2a1f17;--ink-2:#6f5f53;--ink-3:#a3938a;--line:#f1e3d6;
+  --brand:#ff6f4f;--brand-ink:#fff;--brand-soft:#ffe5db;--brand-strong:#c9411f;
+  --good:#1f8a62;--good-soft:#dcf5ea;--warn:#a86c08;--warn-soft:#fff0d2;--over:#6a4bd6;--over-soft:#ece6ff;
+  --special:#2479bd;--special-soft:#e0f0fc;--chart:#e5512f;--chart-track:#f6ebe2;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;
+  --r:22px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17120f;--surface:#221b16;--surface-2:#2b221c;--ink:#f8ede4;--ink-2:#c7b6a8;--ink-3:#8a7a6e;--line:#3a2f27;
+  --brand:#ff7d5e;--brand-ink:#1b120d;--brand-soft:#4a2a20;--brand-strong:#ffa58c;
+  --good:#4fd19f;--good-soft:#173a2c;--warn:#f0b850;--warn-soft:#3d2f14;--over:#a88bff;--over-soft:#2e2550;
+  --special:#67b6f0;--special-soft:#17324a;--chart:#e86244;--chart-track:#2f2620;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17120f;--surface:#221b16;--surface-2:#2b221c;--ink:#f8ede4;--ink-2:#c7b6a8;--ink-3:#8a7a6e;--line:#3a2f27;
+  --brand:#ff7d5e;--brand-ink:#1b120d;--brand-soft:#4a2a20;--brand-strong:#ffa58c;
+  --good:#4fd19f;--good-soft:#173a2c;--warn:#f0b850;--warn-soft:#3d2f14;--over:#a88bff;--over-soft:#2e2550;
+  --special:#67b6f0;--special-soft:#17324a;--chart:#e86244;--chart-track:#2f2620;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-tap-highlight-color:transparent}
+.wrap{max-width:460px;margin:0 auto;padding-inline:16px;padding-block:14px 110px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:28px;font-weight:800;letter-spacing:-.01em}
+h2{font-size:16px;font-weight:600}
+p{margin:0}
+.muted{color:var(--ink-2)}.faint{color:var(--ink-3)}.small{font-size:13px}.tiny{font-size:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;align-items:center;gap:10px;min-width:0}.between{justify-content:space-between}.wrapflex{flex-wrap:wrap}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{background:var(--surface-2);border-radius:16px;padding:12px}
+.stat b{display:block;font:800 24px/1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:6px;font-size:12px;color:var(--ink-2);line-height:1.25}
+.t-brand{color:var(--brand-strong)}.t-good{color:var(--good)}.t-over{color:var(--over)}.t-warn{color:var(--warn)}.t-special{color:var(--special)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.btn{height:48px;border-radius:16px;padding:0 18px;font-weight:700;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.primary{background:var(--brand);color:var(--brand-ink)}
+.btn.sm{height:36px;border-radius:12px;padding:0 12px;font-size:13px}
+.btn.wide{width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.danger{color:#c0392b}
+:root[data-theme="dark"] .btn.danger{color:#ff8a7a}
+.link{color:var(--brand-strong);font-weight:700;font-size:14px}
+.yesno{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.yesno button{height:84px;border-radius:24px;font:800 26px/1 var(--display);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.yesno button small{font:600 12px var(--body);opacity:.85}
+.yes{background:var(--brand-soft);color:var(--brand-strong)}.no{background:var(--good-soft);color:var(--good)}
+.q{font:800 19px/1.3 var(--display);text-align:center}
+.pill{display:inline-flex;align-items:center;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.p-good{background:var(--good-soft);color:var(--good)}.p-warn{background:var(--warn-soft);color:var(--warn)}.p-over{background:var(--over-soft);color:var(--over)}.p-plain{background:var(--surface-2);color:var(--ink-2)}.p-special{background:var(--special-soft);color:var(--special)}
+.bar{height:12px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.b-within{background:var(--good)}.b-reached{background:var(--warn)}.b-over{background:var(--over)}
+.stepper{display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border-radius:16px;padding:6px}
+.stepper button{width:46px;height:46px;border-radius:12px;background:var(--surface);font-size:24px;font-weight:700}
+.stepper output{font:800 28px var(--display);font-variant-numeric:tabular-nums}
+.stepper.sm button{width:36px;height:36px;font-size:18px}.stepper.sm output{font-size:18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:40px;border-radius:99px;border:1px solid var(--line);background:var(--surface);padding:0 14px;font-size:14px;font-weight:600;color:var(--ink-2)}
+.chip[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-strong)}
+.chip.sp[aria-pressed="true"]{border-color:var(--special);background:var(--special-soft);color:var(--special)}
+input[type=text],input[type=date],input[type=time],select{width:100%;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 12px;font:inherit;font-size:16px}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;min-width:0}
+.notice{border-radius:16px;padding:12px 14px;font-size:14px;font-weight:600}
+.n-err{background:var(--brand-soft);color:var(--brand-strong)}.n-good{background:var(--good-soft);color:var(--good)}.n-info{background:var(--special-soft);color:var(--special)}
+.avatar{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.a-peach{background:#ffd9c7}.a-mint{background:#c9f0de}.a-sky{background:#cfe7fb}.a-lilac{background:#e2d9ff}.a-lemon{background:#fff1b8}.a-rose{background:#ffd3e0}
+.tabs{position:fixed;inset:auto 0 0 0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+.tabs ul{max-width:460px;margin:0 auto;padding:6px 8px;list-style:none;display:grid;grid-template-columns:repeat(5,1fr)}
+.tabs button{width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--ink-3);padding:6px 0;border-radius:12px}
+.tabs button[aria-current="page"]{color:var(--brand-strong)}
+.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.cal .h{font-size:11px;font-weight:800;color:var(--ink-3);padding-bottom:2px}
+.day{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;font-weight:700;position:relative;max-width:100%}
+.d-clean{background:var(--good-soft);color:var(--good)}.d-cheat{background:var(--brand-soft);color:var(--brand-strong)}.d-none{border:1px dashed var(--line);color:var(--ink-2)}.d-future{color:var(--ink-3);opacity:.6}
+.day small{font-size:10px;font-weight:800;line-height:1}
+.day.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.day[aria-pressed="true"]{outline:2px solid var(--brand);outline-offset:1px}
+.day .sp{position:absolute;left:6px;right:6px;bottom:3px;height:3px;border-radius:3px;background:var(--special)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:6px}.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.cols{display:flex;align-items:flex-end;gap:2px;height:130px;border-bottom:1px solid var(--line)}
+.cols>div{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;position:relative}
+.cols .c{width:100%;max-width:34px;background:var(--chart);border-radius:4px 4px 0 0}
+.cols .dim{opacity:.45}
+.cols .mk{position:absolute;left:4px;right:4px;height:2px;background:var(--ink);opacity:.7;border-radius:2px}
+.cols .v{position:absolute;font-size:12px;font-weight:800}
+.collabels{display:flex;gap:2px}.collabels div{flex:1;text-align:center;font-size:11px;font-weight:700;color:var(--ink-2)}
+.hbar{height:10px;border-radius:99px;background:var(--chart-track)}.hbar i{display:block;height:100%;border-radius:99px;background:var(--chart)}
+.recap{border-radius:28px;padding:22px;color:#fff;background:linear-gradient(135deg,#ff6f4f,#ff8a5c 55%,#ffb36b);display:flex;flex-direction:column;gap:14px}
+.recap .big{font:800 64px/1 var(--display)}
+.recap .tile{background:rgba(255,255,255,.2);border-radius:16px;padding:10px 12px}
+.recap .tile b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+.toggle{width:48px;height:28px;border-radius:99px;background:var(--line);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle[aria-checked="true"]{background:var(--good)}.toggle[aria-checked="true"]::after{left:22px}
+.list>*+*{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-2);border-radius:14px;padding:4px}
+.seg button{height:38px;border-radius:10px;font-weight:700;font-size:13px;color:var(--ink-2)}
+.seg button[aria-checked="true"]{background:var(--surface);color:var(--ink)}
+.opt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left;width:100%;background:var(--surface)}
+.opt[aria-checked="true"]{border-color:var(--brand);background:var(--brand-soft)}
+.opt b{display:block}.opt span{display:block;font-size:12px;color:var(--ink-2)}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+td,th{padding:8px 0;text-align:right}td:first-child,th:first-child{text-align:left}tr+tr td{border-top:1px solid var(--line)}
+th{font-size:12px;color:var(--ink-2);font-weight:700}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--brand);flex:none;margin-top:8px}
+.li{display:flex;gap:10px;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app" aria-live="polite">
+  <div class="card"><h2>Loading Treatly…</h2><p class="muted small">Getting your entries.</p></div>
+</div>
+<nav class="tabs" aria-label="Main"><ul id="tabs"></ul></nav>
+
+<script>
+"use strict";
+// ================= Dates (local calendar dates as YYYY-MM-DD) =================
+const DAY=864e5;
+const toD=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(Date.UTC(y,m-1,d))};
+const fromD=d=>d.toISOString().slice(0,10);
+const addDays=(s,n)=>fromD(new Date(toD(s).getTime()+n*DAY));
+const daysBetween=(a,b)=>Math.round((toD(b)-toD(a))/DAY)+1;
+const minD=(a,b)=>a<b?a:b, maxD=(a,b)=>a>b?a:b;
+const wd=s=>(toD(s).getUTCDay()+6)%7;
+const sow=s=>addDays(s,-wd(s)), eow=s=>addDays(sow(s),6);
+const som=s=>s.slice(0,8)+"01";
+const dim=s=>{const d=toD(s);return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()};
+const eom=s=>s.slice(0,8)+String(dim(s)).padStart(2,"0");
+const addMonths=(s,n)=>{const d=toD(s);const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+n,1));const m=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();t.setUTCDate(Math.min(d.getUTCDate(),m));return fromD(t)};
+function* days(a,b){for(let d=a;d<=b;d=addDays(d,1))yield d}
+const todayStr=()=>new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WD=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], WDL=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const monthName=s=>MONTHS[toD(s).getUTCMonth()];
+const monthLabel=s=>`${monthName(s)} ${toD(s).getUTCFullYear()}`;
+const med=s=>{const d=toD(s);return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0,3)} ${d.getUTCFullYear()}`};
+const shortD=s=>{const d=toD(s);return `${WD[wd(s)]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0,3)}`};
+const rel=(s,t)=>s===t?"today":s===addDays(t,-1)?"yesterday":`on ${shortD(s)}`;
+const pl=(n,w,p=w+"s")=>`${n} ${n===1?w:p}`;
+
+// ================= Goal & allowance engine (same rules as the full app) =================
+// Allowances accrue per day: weekly a/7, monthly a/days-in-month, weekday plan schedule[weekday],
+// fixed total a/period length. An active special occasion replaces the goal on its dates.
+const FAR="9999-12-31";
+const roundA=x=>Math.round(x+1e-9);
+function effEnd(g){if(g.status==="cancelled")return addDays(g.start,-1);let e=g.end;if(g.status==="paused"&&g.pausedFrom){const p=addDays(g.pausedFrom,-1);e=e?minD(e,p):p}return e}
+const covers=(g,d)=>g.status!=="cancelled"&&d>=g.start&&d<=(effEnd(g)??FAR);
+function goalFor(goals,d){let b=null;for(const g of goals)if(covers(g,d)&&(!b||g.created>b.created))b=g;return b}
+const excFor=(ex,d)=>ex.find(e=>e.status==="active"&&d>=e.start&&d<=e.end)||null;
+const currentGoal=goals=>goals.find(g=>g.status==="active"||g.status==="paused")||null;
+function rate(g,d){switch(g.type){case"daily":return g.allowance;case"weekly":return g.allowance/7;case"monthly":return g.allowance/dim(d);case"weekday":return(g.schedule||[])[wd(d)]||0;case"total":return g.allowance/daysBetween(g.start,g.end)}}
+function dayAllowance(goals,ex,d){const e=excFor(ex,d);if(e)return e.rule==="per_day"?e.allowance:e.allowance/daysBetween(e.start,e.end);const g=goalFor(goals,d);return g?rate(g,d):null}
+function sumAllowance(goals,ex,a,b){let t=0,c=0;for(const d of days(a,b)){const x=dayAllowance(goals,ex,d);if(x!==null){t+=x;c++}}return{allowance:roundA(t),covered:c}}
+function mealsBetween(logs,a,b){let n=0;for(const[d,l]of Object.entries(logs))if(d>=a&&d<=b)n+=l.m;return n}
+const pStatus=(u,a)=>u>a?"over":u===a&&a>0?"reached":"within";
+function goalWindow(g,d){let s,e;switch(g.type){case"daily":s=e=d;break;case"weekly":case"weekday":s=sow(d);e=eow(d);break;case"monthly":s=som(d);e=eom(d);break;case"total":s=g.start;e=g.end}return{start:maxD(s,g.start),end:minD(e,effEnd(g)??FAR)}}
+function windowLabel(g,w,t){const cur=t>=w.start&&t<=w.end;switch(g.type){case"daily":return cur?"Today":med(w.start);case"weekly":case"weekday":return cur?"This week":`Week of ${med(sow(w.start))}`;case"monthly":return`Your ${monthName(w.start)} goal`;case"total":return"Goal period"}}
+function progress(label,w,allowance,used,t){return{label,start:w.start,end:w.end,allowance,used,remaining:Math.max(0,allowance-used),pct:allowance>0?Math.round(used/allowance*100):used>0?100:0,status:pStatus(used,allowance),daysLeft:t>w.end?0:daysBetween(maxD(t,w.start),w.end)}}
+function windowProgress(g,goals,ex,logs,t){const w=goalWindow(g,t);return progress(windowLabel(g,w,t),w,sumAllowance(goals,ex,w.start,w.end).allowance,mealsBetween(logs,w.start,minD(w.end,t)),t)}
+function periodProgress(g,goals,ex,logs,t){const e=effEnd(g);if(!e||e<g.start)return null;const w={start:g.start,end:e};return progress("Whole goal",w,sumAllowance(goals,ex,w.start,w.end).allowance,mealsBetween(logs,w.start,minD(e,t)),t)}
+function phase(g,t){if(g.status!=="active")return g.status;if(g.start>t)return"scheduled";if(g.end&&g.end<t)return"completed";return"active"}
+function describe(g){const m=pl(g.allowance,"cheat meal");switch(g.type){case"daily":return`Up to ${m} a day`;case"weekly":return`Up to ${m} a week`;case"monthly":return`Up to ${m} a month`;case"total":return`Up to ${m} in total`;case"weekday":{const ds=(g.schedule||[]).map((n,i)=>n>0?`${WD[i]} ${n}`:null).filter(Boolean);return ds.length?`Weekly plan: ${ds.join(", ")}`:"No cheat meals planned"}}}
+const duration=g=>g.end?`${med(g.start)} – ${med(g.end)} (${pl(daysBetween(g.start,g.end),"day")})`:`From ${med(g.start)}, ongoing`;
+const OCC=[["vacation","Vacation","🏖️"],["birthday","Birthday","🎂"],["wedding","Wedding","💍"],["festival","Festival","🪔"],["holiday","Holiday","🎄"],["celebration","Celebration","🎉"],["other","Special occasion","✨"]];
+const occ=o=>OCC.find(x=>x[0]===o)||OCC[6];
+const exTitle=e=>(e.label||"").trim()||occ(e.occasion)[1];
+const exDesc=e=>`${med(e.start)} – ${med(e.end)} (${pl(daysBetween(e.start,e.end),"day")}): up to ${pl(e.allowance,"cheat meal")} ${e.rule==="per_day"?"a day":"in total"}`;
+
+// ================= Stats & monthly report =================
+function summarize(logs,a,b,t){const last=minD(b,t);const s={elapsed:last>=a?daysBetween(a,last):0,logged:0,notLogged:0,cheatDays:0,clean:0,meals:0,rate:0,cats:{},wdMeals:[0,0,0,0,0,0,0],longestClean:0};let run=0;
+  if(!s.elapsed)return s;for(const d of days(a,last)){const l=logs[d];if(!l){s.notLogged++;run=0;continue}s.logged++;if(l.h){s.cheatDays++;s.meals+=l.m;s.wdMeals[wd(d)]+=l.m;for(const c of l.c)s.cats[c]=(s.cats[c]||0)+1;run=0}else{s.clean++;run++;s.longestClean=Math.max(s.longestClean,run)}}
+  s.rate=Math.round(s.logged/s.elapsed*100);return s}
+function streak(logs,t){let d=logs[t]?t:addDays(t,-1),n=0;while(logs[d]){n++;d=addDays(d,-1)}return n}
+function bestStreak(logs){let best=0,run=0,prev=null;for(const d of Object.keys(logs).sort()){run=prev&&addDays(prev,1)===d?run+1:1;best=Math.max(best,run);prev=d}return best}
+const rankCats=c=>Object.entries(c).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+function goalPerf(logs,goals,ex,a,b,t){const{allowance,covered}=sumAllowance(goals,ex,a,b);if(!covered)return null;let used=0;for(const[d,l]of Object.entries(logs))if(d>=a&&d<=minD(b,t)&&dayAllowance(goals,ex,d)!==null)used+=l.m;
+  return{allowance,used,remaining:Math.max(0,allowance-used),status:pStatus(used,allowance),exceptions:ex.filter(e=>e.status==="active"&&e.start<=b&&e.end>=a)}}
+function monthReport(month,st,t){const a=som(month),b=eom(a),pa=addMonths(a,-1),pb=eom(pa);const s=summarize(st.logs,a,b,t);
+  const r={month:a,inProgress:t>=a&&t<=b,s,prev:summarize(st.logs,pa,pb,t),same:summarize(st.logs,pa,minD(pb,addDays(pa,Math.max(s.elapsed,1)-1)),t),goal:goalPerf(st.logs,st.goals,st.exceptions,a,b,t)};
+  const g=r.goal,stm=[],ins=[],so=r.inProgress?" so far":"";
+  if(g){if(g.status==="over")stm.push(`You went over your allowance by ${pl(g.used-g.allowance,"cheat meal")}${so}.`);else if(r.inProgress)stm.push(`You've used ${g.used} of your ${pl(g.allowance,"allotted cheat meal")} so far.`);else stm.push(`You stayed within your allowance, using ${g.used} of ${pl(g.allowance,"cheat meal")}.`);for(const e of g.exceptions)stm.push(`Includes your adjusted allowance for ${exTitle(e)}.`)}
+  if(s.elapsed)stm.push(`You logged your food intake on ${s.rate}% of the days${so} this month.`);
+  const p=r.inProgress?r.same:r.prev,when=r.inProgress?"at this point last month":"last month";
+  if(p.logged&&s.logged)stm.push(s.meals<p.meals?`You recorded fewer cheat meals than ${when}.`:s.meals>p.meals?`You recorded more cheat meals than ${when}.`:`You recorded the same number of cheat meals as ${when}.`);
+  if(s.logged){const we=s.wdMeals[5]+s.wdMeals[6];if(s.meals>=3){if(we/s.meals>.5)ins.push(["📅","Most of your recorded cheat meals were on weekends."]);else if(we/s.meals<.2)ins.push(["📅","Most of your recorded cheat meals were on weekdays."])}
+    const mx=Math.max(...s.wdMeals);if(mx>=2&&s.wdMeals.filter(n=>n===mx).length===1)ins.push(["🗓️",`${WDL[s.wdMeals.indexOf(mx)]} was your most common cheat-meal day (${pl(mx,"meal")}).`]);
+    if(p.logged&&s.meals!==p.meals)ins.push([s.meals<p.meals?"📉":"📈",r.inProgress?`${pl(Math.abs(s.meals-p.meals),"cheat meal")} ${s.meals<p.meals?"fewer":"more"} than at this point last month.`:`Your cheat meal count went from ${p.meals} last month to ${s.meals} this month.`]);
+    const rc=rankCats(s.cats);if(rc.length&&rc[0][1]>=2&&(rc.length===1||rc[0][1]>rc[1][1]))ins.push(["🍽️",`You recorded ${catLabel(rc[0][0]).toLowerCase()} more often than any other category (${pl(rc[0][1],"day")}).`]);
+    if(s.elapsed>=7){if(s.rate>=90)ins.push(["✅",`You logged your food intake consistently: ${s.rate}% of days.`]);else if(s.rate<50)ins.push(["📝",`You logged ${s.logged} of ${s.elapsed} days. Logging more days gives you a clearer picture.`])}
+    if(s.longestClean>=3)ins.push(["🌱",`Your longest stretch without a cheat meal was ${s.longestClean} logged days.`])}
+  r.statements=stm;r.insights=ins;return r}
+
+// ================= Categories =================
+const CATS=[["fast_food","Fast food","🍟"],["fried_food","Fried food","🍗"],["pizza","Pizza","🍕"],["burgers_sandwiches","Burgers & sandwiches","🍔"],["sweets_desserts","Sweets & desserts","🍰"],["chocolates_confectionery","Chocolates & confectionery","🍫"],["bakery","Bakery items","🥐"],["sugary_drinks","Sugary drinks","🥤"],["packaged_snacks","Packaged snacks","🍿"],["other","Other","🍽️"]];
+const cat=k=>CATS.find(c=>c[0]===k)||[k,k,"🍽️"];
+const catLabel=k=>cat(k)[1];
+
+// ================= State & storage =================
+// Private state lives in the viewer's own db subtree (only they can read it). A privacy-filtered
+// summary goes to public/<id> for friends. Without db, the page falls back to this browser only.
+const EMOJIS=["🍩","🍕","🍔","🌮","🍦","🧁","🍪","🥑","🍓","🥨","🐻","🦊","🐼","🐸","🌻","⭐"];
+const COLORS=["peach","mint","sky","lilac","lemon","rose"];
+const PRIV=[["logStatus","Daily logging status","Whether you've logged today, and your streak"],["dailyCounts","Daily cheat meal counts",""],["categories","Food categories","What kind of food you logged"],["monthly","Monthly totals",""],["goal","Goal progress","Your allowance, how much you've used, special occasions"],["history","Historical records","Your calendar of past days"]];
+function blankState(){return{v:1,profile:{name:"",emoji:"🍩",color:"peach",private:false},logs:{},goals:[],exceptions:[],privacy:{logStatus:true,dailyCounts:true,categories:false,monthly:true,goal:true,history:false},feed:[]}}
+let S=blankState();
+const ui={tab:"home",flow:null,calMonth:null,calSel:null,insMonth:null,goalForm:null,excForm:null,msg:null,editProfile:false,friendSel:null};
+const net={mode:"local",db:null,uid:null,writable:true,others:[],cheers:{},loaded:false,saving:Promise.resolve(),lastPublic:""};
+const IN_CLAUDE=!!(window.claude&&window.claude.use);
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()).replace(/[^a-z0-9-]/gi,"").slice(0,32);
+
+function loadLocal(){try{const j=localStorage.getItem("treatly-state");if(j)S={...blankState(),...JSON.parse(j)}}catch{}}
+async function save(){
+  if(net.mode==="local"){try{localStorage.setItem("treatly-state",JSON.stringify(S))}catch{}return}
+  const body=JSON.parse(JSON.stringify(S));
+  net.saving=net.saving.then(async()=>{
+    try{await net.db.doc(`data/users/${net.uid}/state`).set(body)}catch(e){
+      if(e&&e.code==="invalid_argument"){net.mode="local";try{localStorage.setItem("treatly-state",JSON.stringify(S))}catch{}render();return}
+      flash("err","Couldn't save. Check your connection and try again.");return}
+    await publishPublic();
+  });return net.saving}
+function publicSummary(){
+  const t=todayStr(),p=S.privacy,o={name:S.profile.name||"Friend",emoji:S.profile.emoji,color:S.profile.color,updated:new Date().toISOString(),today:t};
+  const tl=S.logs[t];
+  if(p.logStatus){o.lastLog=Object.keys(S.logs).sort().pop()||null;o.streak=streak(S.logs,t)}
+  if(p.dailyCounts&&tl)o.todayMeals=tl.m;
+  if(p.categories&&tl)o.todayCats=tl.c;
+  if(p.monthly){const s=summarize(S.logs,som(t),eom(t),t);o.month={key:t.slice(0,7),meals:s.meals,cheatDays:s.cheatDays,logged:s.logged}}
+  if(p.goal){const g=currentGoal(S.goals);if(g&&phase(g,t)==="active"){const w=windowProgress(g,S.goals,S.exceptions,S.logs,t);o.goal={desc:describe(g),label:w.label,used:w.used,allowance:w.allowance,status:w.status}}const e=excFor(S.exceptions,t);if(e)o.occasion={title:exTitle(e),emoji:occ(e.occasion)[2],end:e.end}}
+  if(p.history){o.history={};for(const d of days(addMonths(som(t),-1),t)){const l=S.logs[d];if(l)o.history[d]=p.dailyCounts?l.m:-1}}
+  o.feed=S.feed.filter(f=>({logged:p.logStatus,streak:p.logStatus,goal:p.goal,occasion:p.goal,recap:true})[f.kind]).slice(0,15);
+  return o}
+async function publishPublic(){
+  if(net.mode!=="db"||!net.writable)return;const ref=net.db.doc(`public/${net.uid}`);
+  try{if(S.profile.private){if(net.lastPublic!=="deleted"){await ref.delete();net.lastPublic="deleted"}return}
+    const o=publicSummary(),key=JSON.stringify({...o,updated:0});if(key===net.lastPublic)return;await ref.set(o);net.lastPublic=key}catch{}}
+function post(kind,text,key){if(key&&S.feed.some(f=>f.key===key))return;S.feed.unshift({id:uid(),kind,text,key:key||null,at:new Date().toISOString()});S.feed=S.feed.slice(0,40)}
+
+async function init(){
+  loadLocal();
+  const use=window.claude&&window.claude.use?window.claude.use.bind(window.claude):null;
+  if(use){try{
+    const[user,db]=await Promise.all([use("user"),use("db")]);
+    const id=user?await user.id():null;
+    // Visitors who can't write here (outside the organization, view-only) keep entries on their device.
+    let canWrite=null;try{canWrite=user?await user.can("data.write"):null}catch{}
+    if(db&&id&&canWrite!==false){net.db=db;net.uid=id;net.mode="db";
+      try{const nm=await user.name();if(nm)net.defaultName=nm.split(" ")[0]}catch{}
+      db.doc(`data/users/${id}/state`).onSnapshot(snap=>{
+        if(snap.exists&&!snap.metadata.hasPendingWrites){S={...blankState(),...snap.data()};S=JSON.parse(JSON.stringify(S))}
+        if(!snap.exists&&!net.loaded&&!S.profile.name&&net.defaultName)S.profile.name=net.defaultName;
+        net.loaded=true;render();if(snap.exists)publishPublic()},()=>{});
+      db.collection("public").onSnapshot(q=>{net.others=q.docs.filter(d=>d.id!==id).map(d=>({id:d.id,...d.data()}));render()},()=>{});
+      db.collection("cheers").onSnapshot(q=>{const c={};for(const d of q.docs)c[d.id]=(d.data().items)||{};net.cheers=c;render()},()=>{});
+      return}
+  }catch{}}
+  net.loaded=true;render()
+}
+
+// ================= Rendering helpers =================
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const av=(e,c,size=44)=>`<span class="avatar a-${COLORS.includes(c)?c:"peach"}" style="width:${size}px;height:${size}px;font-size:${size*.5}px" aria-hidden="true">${esc(e)}</span>`;
+const SL={within:["On track","p-good"],reached:["Allowance reached","p-warn"],over:["Over allowance","p-over"]};
+const pill=s=>`<span class="pill ${SL[s][1]}">${SL[s][0]}</span>`;
+const bar=(u,a,s,label)=>`<div class="bar" role="progressbar" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="${a}" aria-valuenow="${u}"><i class="b-${s}" style="width:${a>0?Math.min(100,u/a*100):u>0?100:0}%"></i></div>`;
+const stat=(v,l,cls="")=>`<div class="stat"><b class="${cls}">${v}</b><span>${l}</span></div>`;
+function progBlock(p,title,compact){
+  const msg=p.status==="over"?`${p.used-p.allowance} over your allowance. No stress, keep logging honestly.`:p.status==="reached"?"You've used your full allowance for this period.":`${pl(p.remaining,"cheat meal")} left in this period.`;
+  return `<div style="display:flex;flex-direction:column;gap:8px"><div class="row between"><div><p class="small muted" style="font-weight:600">${esc(title)}</p><p style="font:800 28px/1.1 var(--display)">${p.used} <span class="muted" style="font-size:18px">of ${p.allowance}</span></p><p class="small muted">cheat meals used</p></div>${pill(p.status)}</div>${bar(p.used,p.allowance,p.status,title)}<div class="row between tiny muted"><span>${p.pct}% of allowance used</span><span>${p.daysLeft?pl(p.daysLeft,"day")+" left":"Ended "+med(p.end)}</span></div>${compact?"":`<p class="small" style="font-weight:600">${msg}</p>`}</div>`}
+function flash(kind,text){ui.msg={kind,text};render();clearTimeout(flash.t);flash.t=setTimeout(()=>{ui.msg=null;render()},3500)}
+const notice=()=>ui.msg?`<p class="notice ${ui.msg.kind==="err"?"n-err":"n-good"}" role="status">${esc(ui.msg.text)}</p>`:"";
+
+// ================= Log flow (shared by Home and Calendar) =================
+function flowFor(date){if(!ui.flow||ui.flow.date!==date){const l=S.logs[date];ui.flow={date,mode:l?"summary":"ask",meals:l&&l.h?l.m:1,cats:l?[...l.c]:[],note:l?l.n||"":"",err:null,saved:false,confirmDel:false}}return ui.flow}
+function logFlow(date){
+  const t=todayStr(),f=flowFor(date),l=S.logs[date],dw=rel(date,t);
+  if(f.mode==="summary"&&l){return `<div style="display:flex;flex-direction:column;gap:12px">${l.h?`<div class="row" style="align-items:flex-start"><span class="avatar" style="width:48px;height:48px;border-radius:16px;background:var(--brand-soft);font-size:24px">${cat(l.c[0])[2]}</span><div style="min-width:0"><p style="font:800 18px var(--display)">${pl(l.m,"cheat meal")} ${dw}</p><p class="small muted">${l.c.map(catLabel).join(" · ")}</p>${l.n?`<p class="small muted"><i>“${esc(l.n)}”</i></p>`:""}${f.saved?`<p class="small t-good" style="font-weight:700;margin-top:4px">Logged. Every entry helps you see the bigger picture.</p>`:""}</div></div>`
+    :`<div class="row"><span class="avatar" style="width:48px;height:48px;border-radius:16px;background:var(--good-soft);font-size:24px">🥗</span><div><p style="font:800 18px var(--display)">No cheat meals ${dw}</p><p class="small t-good" style="font-weight:700">Logged! You're staying on track.</p></div></div>`}
+    ${f.confirmDel?`<div class="row" style="background:var(--surface-2);border-radius:14px;padding:10px"><p class="small" style="flex:1">Delete this entry? The day will show as not logged.</p><button class="btn sm" data-a="del-no">Keep</button><button class="btn sm primary" data-a="del-yes">Delete</button></div>`
+    :`<div class="row"><button class="btn" style="flex:1" data-a="edit">Edit entry</button><button class="btn sm" data-a="del">Delete</button></div>`}</div>`}
+  if(f.mode==="details"){return `<div style="display:flex;flex-direction:column;gap:16px"><div class="row between"><p style="font-weight:700">Tell us a little more</p><button class="link" data-a="back">Back</button></div>
+    <div><p class="small" style="font-weight:700;margin-bottom:6px" id="mq">How many cheat meals did you have ${dw}?</p><div class="stepper" role="group" aria-labelledby="mq"><button data-a="m-" aria-label="One fewer meal" ${f.meals<=1?"disabled":""}>−</button><output>${f.meals}</output><button data-a="m+" aria-label="One more meal" ${f.meals>=20?"disabled":""}>+</button></div></div>
+    <fieldset style="border:0;padding:0;margin:0"><legend class="small" style="font-weight:700;margin-bottom:6px">What did you eat? <span class="muted" style="font-weight:500">Pick all that apply</span></legend><div class="chips">${CATS.map(c=>`<button class="chip" data-a="cat" data-k="${c[0]}" aria-pressed="${f.cats.includes(c[0])}">${c[2]} ${c[1]}</button>`).join("")}</div></fieldset>
+    <label class="f">Anything to add? (optional)<input type="text" id="note-in" maxlength="280" placeholder="e.g. Pizza and ice cream" value="${esc(f.note)}"></label>
+    ${f.err?`<p class="notice n-err">${esc(f.err)}</p>`:""}
+    <button class="btn primary wide" data-a="save-yes">Save ${pl(f.meals,"cheat meal")}</button>
+    ${l&&l.h?`<button class="link" style="text-align:center" data-a="save-no">Actually, I didn't have any</button>`:""}</div>`}
+  return `<div style="display:flex;flex-direction:column;gap:14px"><p class="q">Did you eat any junk food or have a cheat meal ${dw}?</p><div class="yesno"><button class="yes" data-a="yes">YES<small>I had a treat</small></button><button class="no" data-a="save-no">NO<small>${date===t?"Nothing today":"Nothing that day"}</small></button></div>${l?`<button class="link" style="text-align:center" data-a="cancel">Cancel</button>`:""}</div>`}
+
+function saveLog(date,h){
+  const f=flowFor(date),t=todayStr();
+  if(date>t)return;
+  if(h&&!f.cats.length){f.err="Pick at least one food category.";return render()}
+  S.logs[date]=h?{h:true,m:f.meals,c:[...f.cats],n:(f.note||"").trim().slice(0,280)||null}:{h:false,m:0,c:[],n:null};
+  if(date===t)post("logged","logged today's food intake",`logged:${t}`);
+  const sk=streak(S.logs,t),ms=[365,180,100,60,30,14,7].find(m=>sk>=m);
+  if(ms)post("streak",`completed a ${ms}-day tracking streak`,`streak:${ms}:${addDays(S.logs[t]?t:addDays(t,-1),-(sk-1))}`);
+  f.mode="summary";f.saved=true;f.err=null;save();render()}
+
+// ================= Screens =================
+function screenHome(){
+  const t=todayStr(),tl=S.logs[t],g=currentGoal(S.goals),ph=g?phase(g,t):null,sk=streak(S.logs,t);
+  const w=g&&ph==="active"?windowProgress(g,S.goals,S.exceptions,S.logs,t):null;
+  const per=g&&ph==="active"&&g.end&&g.type!=="total"?periodProgress(g,S.goals,S.exceptions,S.logs,t):null;
+  const ms=summarize(S.logs,som(t),eom(t),t),mg=goalPerf(S.logs,S.goals,S.exceptions,som(t),eom(t),t);
+  const l14=summarize(S.logs,addDays(t,-13),t,t),pm=addMonths(som(t),-1),same=summarize(S.logs,pm,addDays(pm,ms.elapsed-1),t);
+  const ins=[];if(l14.logged)ins.push(`You've logged your food intake on ${l14.logged} of the last 14 days.`);if(ms.logged)ins.push(`You had cheat meals on ${pl(ms.cheatDays,"day")} this month (${pl(ms.meals,"meal")} in total).`);
+  if(same.logged&&ms.logged&&same.meals!==ms.meals){const d=Math.abs(same.meals-ms.meals);ins.push(`${pl(d,"cheat meal")} ${ms.meals<same.meals?"fewer":"more"} than at this point last month.`)}
+  const ex=excFor(S.exceptions,t)||S.exceptions.filter(e=>e.status==="active"&&e.start>t&&e.start<=addDays(t,14)).sort((a,b)=>a.start.localeCompare(b.start))[0];
+  const y=addDays(t,-1),missed=Object.keys(S.logs).length>0&&!S.logs[y];
+  const h=new Date().getHours(),greet=h<12?"Good morning":h<18?"Good afternoon":"Good evening";
+  const first=!Object.keys(S.logs).length&&!S.goals.length;
+  return `<header class="row between" style="align-items:flex-start;padding-top:6px"><div><p class="small muted">${shortD(t)}</p><h1>${greet}${S.profile.name?", "+esc(S.profile.name.split(" ")[0]):""}</h1></div>${sk?`<span class="pill p-warn" style="font-size:14px;padding:6px 12px" title="Days logged in a row">🔥 ${sk}-day streak</span>`:""}</header>
+  ${notice()}
+  ${first?`<div class="card" style="background:var(--brand-soft);border-color:transparent"><h2>Welcome to Treatly 🎉</h2><p class="small">Answer one quick question each day. Then set a goal so you can see how you're doing. Everything is saved automatically.${net.mode==="local"?" (Right now entries are saved in this browser only.)":""}</p></div>`:""}
+  <section class="card" aria-labelledby="tt"><div class="row between"><h2 id="tt">Today's log</h2><span class="pill ${tl?"p-good":"p-plain"}">${tl?"Completed":"Not logged yet"}</span></div>${logFlow(t)}</section>
+  ${missed?`<button class="card" style="flex-direction:row;align-items:center;border-style:dashed;padding:12px 16px;text-align:left" data-a="goto-cal" data-d="${y}"><span>🗓️</span><span class="small" style="flex:1">You didn't log yesterday. <b>Add it now</b></span><span class="faint">→</span></button>`:""}
+  ${ex?`<div class="notice n-info" style="display:flex;gap:10px;align-items:center"><span style="font-size:20px">${occ(ex.occasion)[2]}</span><span><b>${esc(exTitle(ex))}</b> ${ex.start<=t?`allowance is on until ${med(ex.end)}. Then your usual goal returns.`:`starts ${med(ex.start)}.`}</span></div>`:""}
+  <section class="card"><div class="row between"><h2>Goal progress</h2>${g?`<button class="link" data-a="tab" data-t="goals">Manage</button>`:""}</div>
+   ${!g?`<div class="row"><span style="font-size:28px">🎯</span><div style="flex:1"><b>Set a cheat meal goal</b><p class="small muted">Weekly, monthly or your own schedule. There's no right number.</p></div><button class="btn sm primary" data-a="new-goal">Set goal</button></div>`
+   :ph==="paused"?`<p class="small muted">Your goal (${esc(describe(g).toLowerCase())}) is paused. <button class="link" data-a="tab" data-t="goals">Resume it</button> whenever you're ready.</p>`
+   :ph==="scheduled"?`<p class="small muted">Your goal (${esc(describe(g).toLowerCase())}) starts on ${med(g.start)}.</p>`
+   :ph==="completed"?`<p class="small muted">Your goal period ended on ${med(g.end)}. 🎉</p><button class="btn sm primary" data-a="new-goal">Start a new goal</button>`
+   :`<p class="tiny faint" style="text-transform:uppercase;letter-spacing:.06em;font-weight:700">${esc(describe(g))}</p>${progBlock(w,w.label)}${per?`<hr style="border:0;border-top:1px solid var(--line);margin:4px 0">${progBlock(per,`Whole goal · ends ${med(per.end)}`,true)}`:""}`}
+  </section>
+  <section class="card"><div class="row between"><h2>${monthName(t)} overview</h2><button class="link" data-a="tab" data-t="insights">Details</button></div>
+   <div class="grid3">${stat(ms.meals,"Cheat meals","t-brand")}${stat(mg?mg.allowance:"—","Monthly allowance")}${stat(mg?mg.remaining:"—","Remaining",mg&&mg.status==="over"?"t-over":"t-good")}${stat(ms.cheatDays,"Days with junk food")}${stat(ms.clean,"Days without","t-good")}${stat(`${ms.logged}/${ms.elapsed}`,"Days logged")}</div>
+   ${mg&&mg.status==="over"?`<p class="small muted">You're ${mg.used-mg.allowance} over this month's allowance. That's okay. Logging is what counts.</p>`:""}
+   ${mg&&ms.meals>mg.used?`<p class="tiny faint">${pl(ms.meals-mg.used,"cheat meal")} logged on days without a goal ${ms.meals-mg.used===1?"doesn't":"don't"} count against your allowance.</p>`:""}</section>
+  ${ins.length?`<section class="card"><h2>Quick insights</h2>${ins.map(x=>`<div class="li"><span class="dot"></span><span>${x}</span></div>`).join("")}</section>`:""}`}
+
+function screenCalendar(){
+  const t=todayStr();if(!ui.calMonth)ui.calMonth=som(t);const m=ui.calMonth,lead=wd(m),s=summarize(S.logs,m,eom(m),t);
+  const cells=[];for(let i=0;i<lead;i++)cells.push("<div></div>");
+  for(const d of days(m,eom(m))){const l=S.logs[d],fut=d>t,e=excFor(S.exceptions,d),st=fut?"future":!l?"none":l.h?"cheat":"clean";
+    const lab=`${med(d)}: ${fut?"upcoming":!l?"not logged":l.h?pl(l.m,"cheat meal"):"no cheat meals"}${e?", "+exTitle(e):""}`;
+    cells.push(`<button class="day d-${st}${d===t?" today":""}" data-a="cal-day" data-d="${d}" aria-label="${esc(lab)}" aria-pressed="${ui.calSel===d}" ${fut?"disabled":""}>${Number(d.slice(8))}${st==="cheat"?`<small>×${l.m}</small>`:st==="clean"?"<small>✓</small>":""}${e?'<span class="sp"></span>':""}</button>`)}
+  const nx=addMonths(m,1);
+  return `<header><h1>Calendar</h1><p class="small muted">Your daily records. Missed a day? Tap it to add it.</p></header>${notice()}
+  <section class="card"><div class="row between"><button class="btn sm" data-a="cal-prev" aria-label="Previous month">‹</button><h2>${monthLabel(m)}</h2>${nx<=t?`<button class="btn sm" data-a="cal-next" aria-label="Next month">›</button>`:'<span style="width:36px"></span>'}</div>
+  <div class="cal">${WD.map(x=>`<div class="h">${x.slice(0,2)}</div>`).join("")}${cells.join("")}</div>
+  <div class="legend"><span><i style="background:var(--good-soft)"></i>No cheat meal</span><span><i style="background:var(--brand-soft)"></i>Cheat meal(s)</span><span><i style="border:1px dashed var(--ink-3)"></i>Not logged</span><span><i style="background:var(--special);height:4px"></i>Special occasion</span></div></section>
+  ${ui.calSel?`<section class="card"><div class="row between"><h2>${med(ui.calSel)}</h2><button class="link" data-a="cal-close">Close</button></div>${excFor(S.exceptions,ui.calSel)?`<p class="notice n-info">${occ(excFor(S.exceptions,ui.calSel).occasion)[2]} ${esc(exTitle(excFor(S.exceptions,ui.calSel)))}: special allowance on this day</p>`:""}${logFlow(ui.calSel)}</section>`:`<p class="small muted" style="text-align:center">Tap a day to see, add or edit its entry.</p>`}
+  <div class="grid2" style="grid-template-columns:repeat(4,minmax(0,1fr))">${stat(s.meals,"Cheat meals","t-brand")}${stat(s.cheatDays,"Cheat days")}${stat(s.clean,"Clean days","t-good")}${stat(s.notLogged,"Not logged")}</div>`}
+
+function screenInsights(){
+  const t=todayStr();if(!ui.insMonth)ui.insMonth=som(t);const m=ui.insMonth,r=monthReport(m,S,t),s=r.s,pm=addMonths(m,-1);
+  const series=[];for(let i=5;i>=0;i--){const a=addMonths(m,-i),ss=summarize(S.logs,a,eom(a),t),gp=a<=t?goalPerf(S.logs,S.goals,S.exceptions,a,eom(a),t):null;series.push({a,meals:ss.meals,allow:gp?gp.allowance:null,status:gp?gp.status:null,logged:ss.logged,el:ss.elapsed})}
+  const mx=Math.max(1,...series.map(x=>Math.max(x.meals,x.allow||0))),wmx=Math.max(1,...s.wdMeals),busy=s.wdMeals.indexOf(Math.max(...s.wdMeals));
+  const rc=rankCats(s.cats),cmx=Math.max(1,...rc.map(x=>x[1]));
+  const top=rc[0],p=r.inProgress?r.same:r.prev,chg=p.logged?s.meals-p.meals:null;
+  return `<header><h1>Insights</h1></header>
+  <div class="row between card" style="padding:6px;flex-direction:row"><button class="btn sm" data-a="ins-prev" aria-label="Previous month">‹</button><b>${monthLabel(m)}${r.inProgress?' <span class="tiny faint">so far</span>':""}</b>${addMonths(m,1)<=t?`<button class="btn sm" data-a="ins-next" aria-label="Next month">›</button>`:'<span style="width:36px"></span>'}</div>
+  ${!s.logged?`<section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">📊</span><b>Nothing logged in ${monthName(m)}</b><p class="small muted">Once you log a few days, your summary, patterns and insights appear here.</p></section>`:`
+  <section class="card"><div class="row between"><h2>Monthly summary</h2>${r.goal?pill(r.goal.status):""}</div>
+   <div class="grid3">${stat(s.meals,"Cheat meals","t-brand")}${stat(r.goal?r.goal.allowance:"—","Allowance")}${stat(r.goal?r.goal.remaining:"—","Remaining",r.goal&&r.goal.status==="over"?"t-over":"t-good")}${stat(s.cheatDays,"Days with cheat meals")}${stat(s.clean,"Days without","t-good")}${stat(s.rate+"%",`Logged (${s.logged} of ${s.elapsed} days)`)}</div>
+   ${s.notLogged?`<p class="tiny faint">${pl(s.notLogged,"day")} not logged ${s.notLogged===1?"isn't":"aren't"} counted either way.</p>`:""}</section>
+  <section class="card"><h2>Goal performance</h2>${!r.goal?`<p class="small muted">You didn't have a goal during ${monthName(m)}.</p>`:""}${r.statements.map(x=>`<div class="li"><span class="dot"></span><span>${esc(x)}</span></div>`).join("")}</section>
+  ${r.insights.length?`<section class="card"><h2>Personal insights</h2>${r.insights.map(x=>`<div class="li"><span>${x[0]}</span><span>${esc(x[1])}</span></div>`).join("")}</section>`:""}
+  ${rc.length?`<section class="card"><h2>What you ate</h2><p class="tiny muted">Days each category was logged. A day with several meals counts each category once.</p>${rc.map(([k,n])=>`<div><div class="row between small"><span>${cat(k)[2]} ${catLabel(k)}</span><b>${n}</b></div><div class="hbar" aria-label="${catLabel(k)}: ${pl(n,"day")}"><i style="width:${n/cmx*100}%"></i></div></div>`).join("")}</section>`:""}
+  ${s.meals?`<section class="card"><h2>Cheat meals by day of the week</h2><div class="cols" style="height:100px">${s.wdMeals.map((v,i)=>`<div title="${WDL[i]}: ${pl(v,"cheat meal")}"><div class="c${i===busy?"":" dim"}" style="height:${v/wmx*100}%"></div>${i===busy&&v?`<span class="v" style="bottom:calc(${v/wmx*100}% + 2px)">${v}</span>`:""}</div>`).join("")}</div><div class="collabels">${WD.map(x=>`<div>${x.slice(0,2)}</div>`).join("")}</div></section>`:""}
+  <section class="card"><h2>Habit patterns</h2><div class="grid2">${stat(pl(s.longestClean,"day"),"Longest stretch without a cheat meal")}${stat(s.rate+"%","Logging consistency")}${stat(s.cheatDays?(s.meals/s.cheatDays).toFixed(1):"—","Meals per cheat day")}${stat(bestStreak(S.logs),"Best logging streak (days)")}</div></section>`}
+  <section class="card"><h2>${monthName(m)} vs ${monthName(pm)}</h2>${!r.prev.logged?`<p class="small muted">No entries in ${monthName(pm)} to compare with yet.</p>`:`<table><tr><th></th><th>${monthName(m).slice(0,3)}${r.inProgress?" (so far)":""}</th><th>${monthName(pm).slice(0,3)}</th></tr><tr><td>Cheat meals</td><td><b>${s.meals}</b></td><td>${r.prev.meals}</td></tr><tr><td>Days with cheat meals</td><td><b>${s.cheatDays}</b></td><td>${r.prev.cheatDays}</td></tr><tr><td>Days logged</td><td><b>${s.logged}/${s.elapsed}</b></td><td>${r.prev.logged}/${r.prev.elapsed}</td></tr></table>`}</section>
+  <section class="card"><h2>Cheat meals over time</h2><div class="cols">${series.map(x=>`<div title="${monthLabel(x.a)}: ${pl(x.meals,"cheat meal")}${x.allow!=null?` of ${x.allow} allowed`:""}"><div class="c${x.a===m?"":" dim"}" style="height:${x.meals/mx*100}%"></div>${x.allow!=null?`<span class="mk" style="bottom:${x.allow/mx*100}%"></span>`:""}${x.a===m&&x.meals?`<span class="v" style="bottom:calc(${x.meals/mx*100}% + 2px)">${x.meals}</span>`:""}</div>`).join("")}</div><div class="collabels">${series.map(x=>`<div>${monthName(x.a).slice(0,3)}${x.status?`<br><span class="${x.status==="within"?"t-good":x.status==="reached"?"t-warn":"t-over"}">${x.status==="within"?"✓":x.status==="reached"?"=":"↑"}</span>`:""}</div>`).join("")}</div><p class="tiny muted">Dark tick = allowance for that month. ✓ within · = reached · ↑ over.</p></section>
+  ${s.logged?`<section class="recap" aria-label="Monthly recap card"><div><p class="tiny" style="letter-spacing:.2em;font-weight:800">FOOD HABIT RECAP</p><h2 style="font-size:24px;font-weight:800">${monthLabel(m)}${r.inProgress?" (so far)":""}</h2><p class="small" style="opacity:.9">${esc(S.profile.name||"")}</p></div>
+   <div class="row" style="align-items:flex-end"><span class="big">${s.meals}</span><span style="font-weight:700;padding-bottom:6px">cheat meal${s.meals===1?"":"s"}<br><span class="small" style="opacity:.9">on ${pl(s.cheatDays,"day")}</span></span></div>
+   <div class="grid2"><div class="tile"><b>Goal</b>${r.goal?(r.goal.status==="over"?`${r.goal.used-r.goal.allowance} over a ${r.goal.allowance}-meal allowance`:`${r.goal.used} of ${r.goal.allowance} · within goal`):"No goal this month"}</div><div class="tile"><b>Top treat</b>${top?cat(top[0])[2]+" "+catLabel(top[0]):"—"}</div><div class="tile"><b>Days logged</b>${s.logged} of ${s.elapsed} (${s.rate}%)</div><div class="tile"><b>Longest clean run</b>${pl(s.longestClean,"day")}</div></div>
+   ${chg!==null?`<p class="tile" style="text-align:center;font-weight:800">${chg===0?"Same as last month":`${Math.abs(chg)} ${chg<0?"fewer":"more"} than ${r.inProgress?"this point ":""}last month`}</p>`:""}
+   ${net.mode==="db"?`<button class="btn" style="background:#fff;color:#c9411f" data-a="share-recap" data-m="${m}">Share with friends</button>`:IN_CLAUDE?"":`<a class="btn" style="background:#fff;color:#c9411f;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(recapText(m,r))}">Share recap on WhatsApp</a>`}</section>`:""}`}
+function recapText(m,r){const s=r.s,g=r.goal,rc=rankCats(s.cats)[0];return `My ${monthLabel(m)} Treatly recap: ${pl(s.meals,"cheat meal")} on ${pl(s.cheatDays,"day")}`+(g?(g.status==="over"?`, ${g.used-g.allowance} over my allowance`:`, within my goal (${g.used}/${g.allowance})`):"")+(rc?`. Top treat: ${catLabel(rc[0])}`:"")+`. Logged ${s.rate}% of days. Track with me: ${location.href.split("#")[0]}`}
+
+function goalFormHtml(){
+  const f=ui.goalForm,t=todayStr(),TY=[["monthly","Monthly allowance","e.g. 4 cheat meals each calendar month","🗓️"],["weekly","Weekly allowance","e.g. 2 a week (Monday–Sunday)","📆"],["daily","Daily allowance","e.g. up to 1 a day","☀️"],["weekday","Weekday plan","e.g. 2 on Saturday and 1 on Sunday","🧩"],["total","Total for a set period","e.g. 8 cheat meals over 45 days","🎯"]];
+  const PR=[["ongoing","Ongoing"],["7","7 days"],["14","14 days"],["30","30 days"],["3m","3 months"],["6m","6 months"],["custom","Custom dates"]];
+  const pre=f.type==="total"&&f.preset==="ongoing"?"30":f.preset,end=goalEnd(pre,f.start,f.customEnd),wt=f.schedule.reduce((a,b)=>a+b,0);
+  const g={type:f.type,allowance:f.type==="weekday"?wt:f.allowance,schedule:f.schedule};
+  return `<section class="card"><div class="row between"><h2>${f.editing?"Edit your goal":"Set your goal"}</h2><button class="link" data-a="goal-cancel">Cancel</button></div>
+  <div style="display:flex;flex-direction:column;gap:8px" role="radiogroup" aria-label="Goal type">${TY.map(x=>`<button class="opt" role="radio" aria-checked="${f.type===x[0]}" data-a="g-type" data-v="${x[0]}"><span style="font-size:20px">${x[3]}</span><span style="flex:1"><b>${x[1]}</b><span>${x[2]}</span></span></button>`).join("")}</div>
+  ${f.type==="weekday"?`<div style="display:flex;flex-direction:column;gap:6px"><p class="small" style="font-weight:700">Cheat meals allowed on each day</p>${f.schedule.map((n,i)=>`<div class="row"><span style="width:40px;font-weight:700" class="small">${WD[i]}</span><div class="stepper sm" style="flex:1"><button data-a="g-sch" data-i="${i}" data-d="-1" aria-label="Fewer on ${WDL[i]}" ${n<=0?"disabled":""}>−</button><output>${n}</output><button data-a="g-sch" data-i="${i}" data-d="1" aria-label="More on ${WDL[i]}">+</button></div></div>`).join("")}<p class="small muted">${pl(wt,"cheat meal")} a week in total.</p></div>`
+  :`<div><p class="small" style="font-weight:700;margin-bottom:6px">${{monthly:"Cheat meals per month",weekly:"Cheat meals per week",daily:"Cheat meals per day",total:"Cheat meals in total"}[f.type]}</p><div class="stepper"><button data-a="g-al" data-d="-1" aria-label="Decrease allowance" ${f.allowance<=0?"disabled":""}>−</button><output>${f.allowance}</output><button data-a="g-al" data-d="1" aria-label="Increase allowance">+</button></div></div>`}
+  <div><p class="small" style="font-weight:700;margin-bottom:6px">How long do you want to follow it?</p><div class="chips">${PR.filter(x=>!(f.type==="total"&&x[0]==="ongoing")).map(x=>`<button class="chip" aria-pressed="${pre===x[0]}" data-a="g-pre" data-v="${x[0]}">${x[1]}</button>`).join("")}</div>
+   <div class="grid2" style="margin-top:10px"><label class="f">Starts<input type="date" id="g-start" value="${f.start}" ${f.editing&&f.started?"disabled":""}></label>${pre==="custom"?`<label class="f">Ends<input type="date" id="g-end" value="${f.customEnd}" min="${f.start}"></label>`:`<div class="f small" style="font-weight:600">Ends<p style="height:46px;display:flex;align-items:center;font-size:15px">${end?med(end):"No end date"}</p></div>`}</div></div>
+  <div style="background:var(--surface-2);border-radius:16px;padding:14px"><p class="tiny faint" style="font-weight:800;letter-spacing:.06em">YOUR GOAL</p><p style="font-weight:700">${esc(describe(g))}, ${end?`from ${med(f.start)} to ${med(end)} (${pl(daysBetween(f.start,end),"day")})`:`starting ${f.start===t?"today":med(f.start)}, with no end date`}.</p>
+   ${f.type==="weekly"?`<p class="tiny muted">Weeks run Monday to Sunday. A partial first or last week gets a fair share.</p>`:f.type==="monthly"?`<p class="tiny muted">Uses calendar months. Starting mid-month prorates this month's allowance.</p>`:""}
+   ${f.editing&&f.started?`<p class="tiny t-special" style="margin-top:4px">A new allowance applies from today. Past days keep the goal they were tracked under.</p>`:""}</div>
+  ${f.err?`<p class="notice n-err">${esc(f.err)}</p>`:""}<button class="btn primary wide" data-a="goal-save">${f.editing?"Save changes":"Start this goal"}</button></section>`}
+function goalEnd(p,s,c){switch(p){case"ongoing":return null;case"7":return addDays(s,6);case"14":return addDays(s,13);case"30":return addDays(s,29);case"3m":return addDays(addMonths(s,3),-1);case"6m":return addDays(addMonths(s,6),-1);case"custom":return c}}
+function excFormHtml(){const f=ui.excForm,t=todayStr(),dd=f.end>=f.start?daysBetween(f.start,f.end):0,g=currentGoal(S.goals);
+  return `<section class="card"><div class="row between"><h2>Plan a special occasion</h2><button class="link" data-a="exc-cancel">Cancel</button></div>
+  <div class="chips">${OCC.map(o=>`<button class="chip sp" aria-pressed="${f.occasion===o[0]}" data-a="x-occ" data-v="${o[0]}">${o[2]} ${o[1]}</button>`).join("")}</div>
+  <label class="f">Name (optional)<input type="text" id="x-label" maxlength="60" placeholder="e.g. Goa trip" value="${esc(f.label)}"></label>
+  <div class="grid2"><label class="f">Starts<input type="date" id="x-start" value="${f.start}" min="${addDays(t,-60)}"></label><label class="f">Ends<input type="date" id="x-end" value="${f.end}" min="${f.start}"></label></div>
+  <div class="seg" role="radiogroup" aria-label="Allowance type"><button role="radio" aria-checked="${f.rule==="total"}" data-a="x-rule" data-v="total">Total for the occasion</button><button role="radio" aria-checked="${f.rule==="per_day"}" data-a="x-rule" data-v="per_day">Per day</button></div>
+  <div class="stepper"><button data-a="x-al" data-d="-1" aria-label="Decrease temporary allowance" ${f.allowance<=0?"disabled":""}>−</button><output>${f.allowance}</output><button data-a="x-al" data-d="1" aria-label="Increase temporary allowance">+</button></div>
+  <div class="notice n-info" style="font-weight:500"><b>${dd?`From ${med(f.start)} to ${med(f.end)} (${pl(dd,"day")}) you can have up to ${pl(f.allowance,"cheat meal")} ${f.rule==="total"?"in total":"a day"}.`:"Pick an end date on or after the start date."}</b><br>${g?`Afterwards your usual goal (${esc(describe(g).toLowerCase())}) comes back automatically.`:"You don't have a goal right now; this allowance still shows on your calendar and reports."}</div>
+  ${f.err?`<p class="notice n-err">${esc(f.err)}</p>`:""}<button class="btn primary wide" data-a="exc-save" ${dd?"":"disabled"}>Save special occasion</button></section>`}
+
+function screenGoals(){
+  const t=todayStr(),g=currentGoal(S.goals),ph=g?phase(g,t):null;
+  if(ui.goalForm)return goalFormHtml();if(ui.excForm)return excFormHtml();
+  const w=g&&ph==="active"?windowProgress(g,S.goals,S.exceptions,S.logs,t):null,per=g&&ph==="active"&&g.end&&g.type!=="total"?periodProgress(g,S.goals,S.exceptions,S.logs,t):null;
+  const up=S.exceptions.filter(e=>e.status==="active"&&e.end>=t).sort((a,b)=>a.start.localeCompare(b.start)),past=S.exceptions.filter(e=>e.status==="cancelled"||e.end<t);
+  const hist=S.goals.filter(x=>x!==g||ph==="completed");
+  return `<header><button class="link" data-a="tab" data-t="profile">← Profile</button><h1>Your goals</h1><p class="small muted">Set your own allowance. Change it whenever life changes.</p></header>${notice()}
+  <section class="card"><div class="row between"><h2>Current goal</h2>${g?`<span class="pill p-plain">${{active:"Active",paused:"Paused",scheduled:"Starts soon",completed:"Period finished"}[ph]||ph}</span>`:""}</div>
+   ${!g?`<p class="small muted">No goal yet. Pick an allowance that feels right for you.</p><button class="btn primary" data-a="new-goal">Set a goal</button>`
+   :`<div><p style="font:800 18px var(--display)">${esc(describe(g))}</p><p class="small muted">${duration(g)}</p>${g.status==="paused"?`<p class="small muted">Paused since ${med(g.pausedFrom)}. Paused days don't count toward this goal.</p>`:""}</div>${w?progBlock(w,w.label):""}${per?progBlock(per,"Whole goal period",true):""}
+   ${ph==="completed"?`<button class="btn primary" data-a="new-goal">Start a new goal</button>`:`<div class="grid2"><button class="btn" data-a="edit-goal">Edit goal</button>${g.status==="paused"?`<button class="btn primary" data-a="resume">Resume</button>`:`<button class="btn" data-a="pause" ${g.start>t?"disabled":""}>Pause</button>`}<button class="btn" data-a="new-goal">New goal</button><button class="btn danger" data-a="end-ask">End goal</button></div>${ui.confirmEnd?`<div class="row" style="background:var(--surface-2);border-radius:14px;padding:10px"><p class="small" style="flex:1">End this goal today? It moves to your goal history.</p><button class="btn sm" data-a="end-no">Keep</button><button class="btn sm primary" data-a="end-yes">End</button></div>`:""}`}`}
+  </section>
+  <section class="card"><div class="row between"><h2>Vacations & special occasions</h2><button class="btn sm primary" data-a="new-exc">+ Add</button></div><p class="small muted">Going away or celebrating? Set a temporary allowance for those dates. Your usual goal returns automatically afterwards.</p>
+   ${up.length?up.map(e=>`<div style="border:1px solid var(--line);background:var(--special-soft);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px"><div class="row between"><b>${occ(e.occasion)[2]} ${esc(exTitle(e))}</b><span class="tiny t-special" style="font-weight:700">${e.start<=t?"Happening now":"Upcoming"}</span></div><p class="small muted">${exDesc(e)}</p>
+     ${ui.exEdit===e.id?`<div class="grid2"><label class="f">Starts<input type="date" id="xe-start" value="${e.start}" ${e.start<=t?"disabled":""}></label><label class="f">Ends<input type="date" id="xe-end" value="${e.end}" min="${e.start<=t?addDays(t,-1):e.start}"></label></div><div class="row"><button class="btn sm" data-a="xe-cancel">Cancel</button><button class="btn sm primary" data-a="xe-save" data-id="${e.id}">Save dates</button></div>`
+     :`<div class="row"><button class="btn sm" data-a="xe-edit" data-id="${e.id}">${e.start<=t?"Extend or shorten":"Change dates"}</button><button class="btn sm" data-a="xe-end" data-id="${e.id}">${e.start<=t?"End early":"Cancel"}</button></div>`}</div>`).join(""):`<p class="small muted" style="background:var(--surface-2);border-radius:14px;padding:12px">Nothing planned right now.</p>`}</section>
+  ${hist.length||past.length?`<section class="card"><h2>History</h2><div class="list">${hist.map(x=>{const e=effEnd(x),ok=x.status!=="cancelled"&&!(e&&e<x.start)&&x.start<=t;let res="";if(ok){const end=e??t;let tot=0;for(const d of days(x.start,end)){if(goalFor(S.goals,d)!==x)continue;tot+=dayAllowance(S.goals,S.exceptions,d)??0}const a=roundA(tot),s2=summarize(S.logs,x.start,minD(end,t),t);res=`<div class="row between"><p class="small muted">${s2.meals} of ${a} cheat meals used · logged ${s2.logged} of ${s2.elapsed} days</p>${pill(pStatus(s2.meals,a))}</div>`}
+     return `<div><p style="font-weight:700">${esc(describe(x))}</p><p class="tiny muted">${x.status==="cancelled"?"Replaced before it started":duration({start:x.start,end:effEnd(x)})}</p>${res}</div>`}).join("")}${past.map(e=>`<div><p style="font-weight:700">${occ(e.occasion)[2]} ${esc(exTitle(e))}</p><p class="tiny muted">${e.status==="cancelled"?"Cancelled · ":""}${exDesc(e)}</p></div>`).join("")}</div></section>`:""}`}
+
+function screenFriends(){
+  const t=todayStr(),cards=net.others.filter(o=>o&&o.name);
+  if(net.mode!=="db")return IN_CLAUDE?`<header><h1>Friends</h1></header><section class="card"><h2>Friends need the shared link</h2><p class="small muted">Open Treatly from its claude.ai link to see friends. Right now your entries are saved in this browser only.</p></section>`
+    :`<header><h1>Friends</h1><p class="small muted">Accountability, not judgement.</p></header>${notice()}<section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">🤝</span><b>Track together</b><p class="small muted">Invite friends to use Treatly too, then share your monthly recap with each other. Your entries stay private on your phone.</p><a class="btn primary wide" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("I'm tracking my cheat meals with Treatly. One quick yes/no a day. Try it with me: "+location.href.split("#")[0])}">Invite on WhatsApp</a><button class="btn wide" data-a="share-app">Share link another way</button></section>
+    <section class="card"><h2>Share your progress</h2><p class="small muted">Send friends your monthly recap from the Insights tab, so they see your highlights without your full food log.</p><button class="btn" data-a="tab" data-t="insights">Go to my recap</button></section>`;
+  if(ui.friendSel){const o=cards.find(x=>x.id===ui.friendSel);if(o)return friendDetail(o,t);ui.friendSel=null}
+  const feed=[...cards.flatMap(o=>(o.feed||[]).map(f=>({...f,owner:o}))),...S.feed.filter(f=>!S.profile.private).map(f=>({...f,owner:{id:net.uid,name:"You",emoji:S.profile.emoji,color:S.profile.color}}))].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,25);
+  const mine=(net.cheers[net.uid]||{});
+  return `<header><h1>Friends</h1><p class="small muted">Accountability, not judgement. Cheer each other on.</p></header>${notice()}
+  ${!cards.length?`<section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">🤝</span><b>Better together</b><p class="small muted">Share this page with friends using the <b>Share</b> button at the top of the page (give them <b>Contributor</b> access so they can log). Everyone who joins shows up here.</p></section>`
+  :`<p class="small muted">${cards.filter(o=>o.lastLog===t).length} of ${pl(cards.length,"friend")} logged today.</p>${cards.map(o=>friendCard(o,t)).join("")}`}
+  <section class="card"><h2>Activity</h2>${feed.length?feed.map(f=>{const k=`${f.owner.id}:${f.id}`,own=f.owner.id===net.uid,n=Object.values(net.cheers).filter(c=>c[k]).length,on=!!mine[k];
+    return `<div class="row" style="align-items:flex-start;border-top:1px solid var(--line);padding-top:10px">${av(f.owner.emoji,f.owner.color,36)}<div style="flex:1;min-width:0"><p class="small">${esc(own?"You":f.owner.name)} ${esc(f.text)}.</p><p class="tiny faint">${ago(f.at)}</p></div>${own?(n?`<span class="tiny muted">👏 ${n}</span>`:""):`<button class="btn sm" style="${on?"background:var(--brand-soft);color:var(--brand-strong)":""}" aria-pressed="${on}" data-a="cheer" data-k="${esc(k)}">👏 ${on?"Cheered":"Cheer"}${n?" · "+n:""}</button>`}</div>`}).join(""):`<p class="small muted">Updates from you and your friends appear here.</p>`}</section>`}
+function ago(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1e3);return s<60?"just now":s<3600?`${Math.floor(s/60)}m ago`:s<86400?`${Math.floor(s/3600)}h ago`:`${Math.floor(s/86400)}d ago`}
+function friendCard(o,t){const logged=o.streak!==undefined?o.lastLog===t:null,mk=t.slice(0,7);
+  const row=(k,v)=>`<div class="row between small"><span class="muted">${k}</span><b>${v}</b></div>`,priv='<span class="faint" style="font-weight:500">Private</span>';
+  return `<section class="card"><button class="row" style="text-align:left;width:100%" data-a="friend" data-id="${esc(o.id)}">${av(o.emoji,o.color,48)}<span style="flex:1;min-width:0"><b style="display:block">${esc(o.name)}</b>${o.streak?`<span class="tiny t-warn" style="font-weight:700">🔥 ${o.streak}-day streak</span>`:""}</span>${logged===null?"":`<span class="pill ${logged?"p-good":"p-plain"}">${logged?"Logged today":"Not logged yet"}</span>`}</button>
+   ${row("Today's log",logged===null?priv:logged?"Completed":"Not yet")}${row("Cheat meals today",o.todayMeals!==undefined&&logged?o.todayMeals:logged===false?"—":logged&&o.todayMeals===undefined?priv:"—")}${row(`${monthName(t)} cheat meals`,o.month&&o.month.key===mk?o.month.meals:o.month?0:priv)}
+   ${o.occasion&&o.occasion.end>=t?`<p class="notice n-info small">${esc(o.occasion.emoji)} ${esc(o.occasion.title)} until ${med(o.occasion.end)}</p>`:""}
+   ${o.goal?`<div style="background:var(--surface-2);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px"><div class="row between"><b class="small">${esc(o.goal.label)}: ${o.goal.used} of ${o.goal.allowance} used</b>${pill(o.goal.status)}</div>${bar(o.goal.used,o.goal.allowance,o.goal.status,o.name+" goal")}<p class="tiny muted">Remaining: ${Math.max(0,o.goal.allowance-o.goal.used)}</p></div>`:`<p class="tiny faint">Goal progress is private or not set.</p>`}
+   <p class="tiny faint">Updated ${ago(o.updated)}</p></section>`}
+function friendDetail(o,t){const m=som(t),lead=wd(m),cells=[];for(let i=0;i<lead;i++)cells.push("<div></div>");
+  for(const d of days(m,eom(m))){const v=o.history?o.history[d]:undefined,fut=d>t,st=fut?"future":v===undefined?"none":v===-1?"plain":v>0?"cheat":"clean";cells.push(`<div class="day d-${st==="plain"?"none":st}" ${st==="plain"?'style="background:var(--surface-2)"':""}>${Number(d.slice(8))}${st==="cheat"?`<small>×${v}</small>`:""}</div>`)}
+  return `<header><button class="link" data-a="friend-close">← Friends</button></header>${friendCard(o,t)}<section class="card"><h2>History · ${monthLabel(m)}</h2>${o.history?`<div class="cal">${WD.map(x=>`<div class="h">${x.slice(0,2)}</div>`).join("")}${cells.join("")}</div>`:`<p class="small muted">${esc(o.name)} keeps their daily history private.</p>`}</section>`}
+
+function screenProfile(){
+  const t=todayStr(),g=currentGoal(S.goals),ms=summarize(S.logs,som(t),eom(t),t),p=S.profile;
+  return `<header class="row" style="padding-top:6px">${av(p.emoji,p.color,68)}<div style="flex:1;min-width:0"><h1>${esc(p.name||"Your profile")}</h1><p class="small muted">${p.private?"Hidden from friends":"Visible to friends with the link"}</p></div><button class="btn sm" data-a="edit-profile">${ui.editProfile?"Done":"Edit"}</button></header>${notice()}
+  ${ui.editProfile?`<section class="card"><label class="f">Your name<input type="text" id="p-name" maxlength="40" value="${esc(p.name)}"></label><div><p class="small" style="font-weight:700;margin-bottom:6px">Avatar</p><div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px">${EMOJIS.map(e=>`<button class="chip" style="padding:0;height:40px" aria-pressed="${p.emoji===e}" aria-label="Use ${e}" data-a="p-emoji" data-v="${e}">${e}</button>`).join("")}</div><div class="row" style="margin-top:10px">${COLORS.map(c=>`<button class="avatar a-${c}" style="width:34px;height:34px;${p.color===c?"box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)":""}" aria-label="${c} background" aria-pressed="${p.color===c}" data-a="p-color" data-v="${c}"></button>`).join("")}</div></div><button class="btn primary" data-a="p-save">Save profile</button></section>`:""}
+  <div class="grid3">${stat(streak(S.logs,t),"Day streak")}${stat(ms.meals,`${monthName(t)} cheat meals`,"t-brand")}${stat(bestStreak(S.logs),"Best streak")}</div>
+  <button class="card" style="flex-direction:row;align-items:center;text-align:left" data-a="tab" data-t="goals"><span style="font-size:24px">🎯</span><span style="flex:1"><b style="display:block">Goals & special occasions</b><span class="small muted">${g?esc(describe(g)):"No goal set"}</span></span><span class="faint">›</span></button>
+  <section class="card"><h2>What friends can see</h2><p class="tiny muted">Only people you share this page with can see these, and only what you switch on.</p>
+   <div class="row between"><span><b class="small" style="display:block">Private profile</b><span class="tiny muted">Hide me from friends completely</span></span><button class="toggle" role="switch" aria-checked="${p.private}" aria-label="Private profile" data-a="priv-all"></button></div>
+   ${PRIV.map(([k,l,h])=>`<div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span><b class="small" style="display:block">${l}</b>${h?`<span class="tiny muted">${h}</span>`:""}</span><button class="toggle" role="switch" aria-checked="${S.privacy[k]}" aria-label="${l}" data-a="priv" data-k="${k}" ${p.private?"disabled":""}></button></div>`).join("")}</section>
+  <section class="card"><h2>${IN_CLAUDE?"About this version":"Your data"}</h2><p class="small muted">${net.mode==="db"?"Your entries are saved to your account on this page and follow you on any device where you open the link.":"Your entries are saved privately on this device, in this browser. Nobody else can see them. Keep a backup so you never lose them."}</p>${net.mode==="db"?"":`<div class="grid2"><button class="btn" data-a="export">Save a backup</button><label class="btn" style="cursor:pointer">Restore backup<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>`}</section>`}
+
+// ================= Shell, routing, events =================
+const TABS=[["home","Home",'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],["calendar","Calendar",'<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>'],["friends","Friends",'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2"/>'],["insights","Insights",'<path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/>'],["profile","Profile",'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>']];
+function render(){
+  if(!net.loaded)return;
+  const active=ui.tab==="goals"?"profile":ui.tab;
+  document.getElementById("tabs").innerHTML=TABS.map(([k,l,i])=>`<li><button data-a="tab" data-t="${k}" ${active===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${i}</svg>${l}</button></li>`).join("");
+  const scr={home:screenHome,calendar:screenCalendar,friends:screenFriends,insights:screenInsights,profile:screenProfile,goals:screenGoals}[ui.tab];
+  const app=document.getElementById("app"),focusId=document.activeElement&&document.activeElement.id,sel=focusId?[document.activeElement.selectionStart,document.activeElement.selectionEnd]:null;
+  app.innerHTML=scr();
+  if(focusId){const el=document.getElementById(focusId);if(el){el.focus();try{if(sel&&el.setSelectionRange)el.setSelectionRange(sel[0],sel[1])}catch{}}}}
+
+function newGoalForm(edit){const t=todayStr(),g=edit?currentGoal(S.goals):null;
+  ui.goalForm=g?{editing:true,started:g.start<t,type:g.type,allowance:g.allowance,schedule:g.schedule?[...g.schedule]:[0,0,0,0,1,2,1],start:g.start,preset:g.end?"custom":"ongoing",customEnd:g.end||addDays(t,44),err:null}
+  :{editing:false,type:"monthly",allowance:4,schedule:[0,0,0,0,1,2,1],start:t,preset:"ongoing",customEnd:addDays(t,44),err:null}}
+function closePatch(g,last){if(g.status==="paused"&&g.pausedFrom)last=minD(last,addDays(g.pausedFrom,-1));const e=g.end?minD(g.end,last):last;if(e<g.start){g.status="cancelled";g.pausedFrom=null}else{g.status="ended";g.end=e;g.pausedFrom=null}}
+function saveGoal(){const f=ui.goalForm,t=todayStr(),pre=f.type==="total"&&f.preset==="ongoing"?"30":f.preset,end=goalEnd(pre,f.start,f.customEnd);
+  const allowance=f.type==="weekday"?f.schedule.reduce((a,b)=>a+b,0):f.allowance;
+  if(end&&end<f.start){f.err="The end date must be after the start date.";return render()}
+  const cur=currentGoal(S.goals),rule={type:f.type,allowance,schedule:f.type==="weekday"?[...f.schedule]:null};
+  if(f.editing&&cur){
+    const started=cur.start<t,changed=cur.type!==rule.type||cur.allowance!==rule.allowance||JSON.stringify(cur.schedule)!==JSON.stringify(rule.schedule);
+    if(started&&end&&end<addDays(t,-1)){f.err="The end date can't be earlier than yesterday.";return render()}
+    if(!changed||!started){Object.assign(cur,rule,{start:started?cur.start:f.start,end})}
+    else{if(end&&end<t){f.err="To change the allowance, the goal needs to run until at least today.";return render()}
+      const paused=cur.status==="paused";closePatch(cur,addDays(t,-1));S.goals.unshift({id:uid(),...rule,start:t,end,status:paused?"paused":"active",pausedFrom:paused?t:null,created:new Date().toISOString(),prev:cur.id})}
+    post("goal","updated their goal: "+describe(rule).toLowerCase())}
+  else{
+    if(f.start<t){for(const d of days(f.start,addDays(t,-1)))if(S.goals.some(g=>covers(g,d))){f.err="That start date overlaps an earlier goal. Start from today instead.";return render()}}
+    if(cur)closePatch(cur,addDays(f.start,-1));
+    S.goals.unshift({id:uid(),...rule,start:f.start,end,status:"active",pausedFrom:null,created:new Date().toISOString(),prev:cur?cur.id:null});
+    post("goal","started a new goal: "+describe(rule).toLowerCase())}
+  ui.goalForm=null;save();flash("good","Saved! Your progress has been updated.")}
+function saveExc(){const f=ui.excForm;if(f.end<f.start){f.err="The end date must be on or after the start date.";return render()}
+  if(daysBetween(f.start,f.end)>366){f.err="Special occasions can last up to a year.";return render()}
+  if(S.exceptions.some(e=>e.status==="active"&&e.start<=f.end&&e.end>=f.start)){f.err="These dates overlap another special occasion. Adjust or cancel that one first.";return render()}
+  const g=currentGoal(S.goals),e={id:uid(),goalId:g?g.id:null,occasion:f.occasion,label:f.label.trim().slice(0,60)||null,start:f.start,end:f.end,rule:f.rule,allowance:f.allowance,status:"active"};
+  S.exceptions.push(e);post("occasion",`adjusted their goal for ${exTitle(e)} (${med(e.start)} – ${med(e.end)})`);ui.excForm=null;save();flash("good","Special occasion saved.")}
+
+document.addEventListener("input",ev=>{const id=ev.target.id,v=ev.target.value;
+  if(id==="note-in"&&ui.flow)ui.flow.note=v;
+  if(id==="x-label"&&ui.excForm)ui.excForm.label=v;});
+document.addEventListener("change",ev=>{const id=ev.target.id,v=ev.target.value;if(!v)return;
+  if(id==="import-file"){const file=ev.target.files[0];if(!file)return;file.text().then(txt=>{const d=JSON.parse(txt);if(!d||typeof d.logs!=="object"||!Array.isArray(d.goals))throw 0;S={...blankState(),...d};save();flash("good","Backup restored.")}).catch(()=>flash("err","That file isn't a Treatly backup."));return}
+  if(id==="g-start"&&ui.goalForm){ui.goalForm.start=v;if(ui.goalForm.customEnd<v)ui.goalForm.customEnd=v;render()}
+  if(id==="g-end"&&ui.goalForm){ui.goalForm.customEnd=v;render()}
+  if(id==="x-start"&&ui.excForm){ui.excForm.start=v;if(ui.excForm.end<v)ui.excForm.end=v;render()}
+  if(id==="x-end"&&ui.excForm){ui.excForm.end=v;render()}});
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-a]");if(!b||b.disabled)return;const a=b.dataset.a,t=todayStr(),f=ui.flow;
+  const date=ui.tab==="calendar"?ui.calSel:t;
+  switch(a){
+    case"tab":ui.tab=b.dataset.t;ui.goalForm=ui.excForm=null;ui.friendSel=null;ui.flow=null;window.scrollTo(0,0);break;
+    case"yes":flowFor(date).mode="details";break;
+    case"save-no":saveLog(date,false);return;
+    case"save-yes":saveLog(date,true);return;
+    case"back":f.mode=S.logs[date]?"summary":"ask";break;
+    case"cancel":f.mode="summary";break;
+    case"edit":f.saved=false;f.mode=S.logs[date].h?"details":"ask";break;
+    case"del":f.confirmDel=true;break;case"del-no":f.confirmDel=false;break;
+    case"del-yes":delete S.logs[date];ui.flow=null;save();break;
+    case"m-":f.meals=Math.max(1,f.meals-1);break;case"m+":f.meals=Math.min(20,f.meals+1);break;
+    case"cat":{const k=b.dataset.k;f.cats=f.cats.includes(k)?f.cats.filter(x=>x!==k):[...f.cats,k];f.err=null;break}
+    case"goto-cal":ui.tab="calendar";ui.calSel=b.dataset.d;ui.calMonth=som(b.dataset.d);ui.flow=null;window.scrollTo(0,0);break;
+    case"cal-day":ui.calSel=b.dataset.d;ui.flow=null;break;case"cal-close":ui.calSel=null;break;
+    case"cal-prev":ui.calMonth=addMonths(ui.calMonth,-1);ui.calSel=null;break;case"cal-next":ui.calMonth=addMonths(ui.calMonth,1);ui.calSel=null;break;
+    case"ins-prev":ui.insMonth=addMonths(ui.insMonth,-1);break;case"ins-next":ui.insMonth=addMonths(ui.insMonth,1);break;
+    case"new-goal":ui.tab="goals";newGoalForm(false);window.scrollTo(0,0);break;
+    case"edit-goal":newGoalForm(true);break;case"goal-cancel":ui.goalForm=null;break;
+    case"g-type":{const g=ui.goalForm;g.type=b.dataset.v;g.allowance={monthly:4,weekly:2,daily:1,weekday:0,total:8}[g.type];break}
+    case"g-al":ui.goalForm.allowance=Math.max(0,Math.min(500,ui.goalForm.allowance+Number(b.dataset.d)));break;
+    case"g-sch":{const i=Number(b.dataset.i);ui.goalForm.schedule[i]=Math.max(0,Math.min(20,ui.goalForm.schedule[i]+Number(b.dataset.d)));break}
+    case"g-pre":ui.goalForm.preset=b.dataset.v;break;
+    case"goal-save":saveGoal();return;
+    case"pause":{const g=currentGoal(S.goals);g.status="paused";g.pausedFrom=t;save();break}
+    case"resume":{const g=currentGoal(S.goals);if(g.pausedFrom>=t){g.status="active";g.pausedFrom=null}else{const end=g.end;closePatch(g,t);if(!end||end>=t)S.goals.unshift({id:uid(),type:g.type,allowance:g.allowance,schedule:g.schedule,start:t,end,status:"active",pausedFrom:null,created:new Date().toISOString(),prev:g.id})}save();break}
+    case"end-ask":ui.confirmEnd=true;break;case"end-no":ui.confirmEnd=false;break;
+    case"end-yes":closePatch(currentGoal(S.goals),t);ui.confirmEnd=false;save();break;
+    case"new-exc":ui.excForm={occasion:"vacation",label:"",start:t,end:addDays(t,4),rule:"total",allowance:5,err:null};break;
+    case"exc-cancel":ui.excForm=null;break;
+    case"x-occ":ui.excForm.occasion=b.dataset.v;break;case"x-rule":ui.excForm.rule=b.dataset.v;break;
+    case"x-al":ui.excForm.allowance=Math.max(0,Math.min(200,ui.excForm.allowance+Number(b.dataset.d)));break;
+    case"exc-save":saveExc();return;
+    case"xe-edit":ui.exEdit=b.dataset.id;break;case"xe-cancel":ui.exEdit=null;break;
+    case"xe-save":{const e=S.exceptions.find(x=>x.id===b.dataset.id),s=document.getElementById("xe-start").value,en=document.getElementById("xe-end").value;
+      if(!s||!en||en<s){flash("err","The end date must be on or after the start date.");return}
+      if(e.start<=t&&en<minD(e.end,addDays(t,-1))){flash("err","You can only shorten it to yesterday or later.");return}
+      if(S.exceptions.some(x=>x!==e&&x.status==="active"&&x.start<=en&&x.end>=s)){flash("err","Those dates overlap another special occasion.");return}
+      if(e.start>t)e.start=s;e.end=en;ui.exEdit=null;save();break}
+    case"xe-end":{const e=S.exceptions.find(x=>x.id===b.dataset.id),y=addDays(t,-1);if(e.start>y)e.status="cancelled";else e.end=minD(e.end,y);save();break}
+    case"edit-profile":ui.editProfile=!ui.editProfile;break;
+    case"p-emoji":S.profile.emoji=b.dataset.v;break;case"p-color":S.profile.color=b.dataset.v;break;
+    case"p-save":{const n=document.getElementById("p-name").value.trim().slice(0,40);S.profile.name=n;ui.editProfile=false;save();flash("good","Profile saved.");return}
+    case"priv-all":S.profile.private=!S.profile.private;save();break;
+    case"priv":S.privacy[b.dataset.k]=!S.privacy[b.dataset.k];save();break;
+    case"friend":ui.friendSel=b.dataset.id;window.scrollTo(0,0);break;case"friend-close":ui.friendSel=null;break;
+    case"cheer":toggleCheer(b.dataset.k);return;
+    case"share-app":{const url=location.href.split("#")[0];if(navigator.share){navigator.share({title:"Treatly",text:"Track your cheat meals with me on Treatly",url}).catch(()=>{})}else{navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>flash("good","Link copied.")).catch(()=>flash("good",url))}return}
+    case"export":{const blob=new Blob([JSON.stringify(S,null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`treatly-backup-${t}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);return}
+    case"share-recap":{const m=b.dataset.m,r=monthReport(m,S,t);post("recap",`shared their ${monthLabel(m)} recap: ${pl(r.s.meals,"cheat meal")} on ${pl(r.s.cheatDays,"day")}${r.goal?(r.goal.status==="over"?`, ${r.goal.used-r.goal.allowance} over allowance`:", within goal"):""}`,`recap:${m}:${r.s.meals}`);save();flash("good","Shared with your friends' activity feed.");return}
+  }
+  render()});
+async function toggleCheer(k){if(net.mode!=="db")return;const mine={...(net.cheers[net.uid]||{})};if(mine[k])delete mine[k];else mine[k]=true;net.cheers={...net.cheers,[net.uid]:mine};render();
+  try{await net.db.doc(`cheers/${net.uid}`).set({items:mine})}catch{flash("err","Couldn't send your cheer.")}}
+
+init();
+</script>
+
+</body>
+</html>
