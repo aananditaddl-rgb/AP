@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Treatly design tokens.
+   Warm, friendly palette. "Over allowance" uses lilac, not red: going over is
+   information, not a failure. */
+:root {
+  --bg: #fff8f2;
+  --surface: #ffffff;
+  --surface-2: #fdf1e7;
+  --ink: #2a1f17;
+  --ink-2: #6f5f53;
+  --ink-3: #a3938a;
+  --line: #f1e3d6;
+
+  --brand: #ff6f4f;
+  --brand-ink: #ffffff;
+  --brand-soft: #ffe5db;
+  --brand-strong: #e5512f;
+
+  --good: #1f9e6f;
+  --good-soft: #dcf5ea;
+  --warn: #c98512;
+  --warn-soft: #fff0d2;
+  --over: #7a5ae0;
+  --over-soft: #ece6ff;
+  --special: #2f8fd6;
+  --special-soft: #e0f0fc;
+  --chart: #e5512f;
+  --chart-track: #f6ebe2;
+
+  --avatar-peach: #ffd9c7;
+  --avatar-mint: #c9f0de;
+  --avatar-sky: #cfe7fb;
+  --avatar-lilac: #e2d9ff;
+  --avatar-lemon: #fff1b8;
+  --avatar-rose: #ffd3e0;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17120f;
+    --surface: #221b16;
+    --surface-2: #2b221c;
+    --ink: #f8ede4;
+    --ink-2: #c7b6a8;
+    --ink-3: #8a7a6e;
+    --line: #3a2f27;
+    --brand: #ff7d5e;
+    --brand-ink: #1b120d;
+    --brand-soft: #4a2a20;
+    --brand-strong: #ff9a80;
+    --good: #4fd19f;
+    --good-soft: #173a2c;
+    --warn: #f0b850;
+    --warn-soft: #3d2f14;
+    --over: #a88bff;
+    --over-soft: #2e2550;
+    --special: #67b6f0;
+    --special-soft: #17324a;
+    --chart: #e86244;
+    --chart-track: #2f2620;
+    --avatar-peach: #5a3a2c;
+    --avatar-mint: #24493a;
+    --avatar-sky: #24405a;
+    --avatar-lilac: #3b3260;
+    --avatar-lemon: #4f4520;
+    --avatar-rose: #5a2d3c;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #17120f;
+  --surface: #221b16;
+  --surface-2: #2b221c;
+  --ink: #f8ede4;
+  --ink-2: #c7b6a8;
+  --ink-3: #8a7a6e;
+  --line: #3a2f27;
+  --brand: #ff7d5e;
+  --brand-ink: #1b120d;
+  --brand-soft: #4a2a20;
+  --brand-strong: #ff9a80;
+  --good: #4fd19f;
+  --good-soft: #173a2c;
+  --warn: #f0b850;
+  --warn-soft: #3d2f14;
+  --over: #a88bff;
+  --over-soft: #2e2550;
+  --special: #67b6f0;
+  --special-soft: #17324a;
+  --chart: #e86244;
+  --chart-track: #2f2620;
+  --avatar-peach: #5a3a2c;
+  --avatar-mint: #24493a;
+  --avatar-sky: #24405a;
+  --avatar-lilac: #3b3260;
+  --avatar-lemon: #4f4520;
+  --avatar-rose: #5a2d3c;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-strong: var(--brand-strong);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-over: var(--over);
+  --color-over-soft: var(--over-soft);
+  --color-special: var(--special);
+  --color-special-soft: var(--special-soft);
+  --color-chart: var(--chart);
+  --color-chart-track: var(--chart-track);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 1.5rem;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.animate-pop { animation: pop-in 220ms ease-out both; }
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.animate-sheet { animation: sheet-up 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+.pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
