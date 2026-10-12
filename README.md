@@ -141,10 +141,19 @@ tests/               DB integration tests and Playwright e2e
 - Friendly opt-in challenges between friends.
 - Native app wrappers if app-store distribution is needed.
 
-## Standalone web app (no sign-up)
+## Standalone web app (no sign-up needed)
 
-`standalone/` is a single-page version of Treatly that anyone can open, with no account or backend.
-Entries are saved privately in the person's own browser (with backup/restore on the Profile tab);
-friends invite each other and share monthly recaps over WhatsApp. It is published from the
-`gh-pages` branch to **https://aananditaddl-rgb.github.io/AP/**. To update it, copy `standalone/`
-to the `gh-pages` branch.
+`standalone/` is a single-page version of Treatly published from the `gh-pages` branch at
+**https://aananditaddl-rgb.github.io/AP/**. Anyone can use it straight away; entries are kept in
+their browser (with backup/restore on the Profile tab).
+
+**Friends (optional accounts).** With a Supabase project connected, people can create an account
+with just a username and password, sync their entries, add friends by username or invite link,
+see friends' progress (only what each person's privacy toggles allow) and cheer each other on.
+To connect one:
+
+1. Create a free Supabase project, open **SQL Editor**, paste `standalone/setup.sql` and run it.
+2. In **Authentication → Sign In / Providers → Email**, turn **Confirm email** off
+   (accounts use usernames, so there are no real email addresses to confirm).
+3. Put the project URL and publishable key into `SUPABASE_URL` / `SUPABASE_KEY` at the top of the
+   script in `standalone/index.html`, and copy `standalone/` to the `gh-pages` branch.

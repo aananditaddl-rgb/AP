@@ -140,6 +140,7 @@ th{font-size:12px;color:var(--ink-2);font-weight:700}
 </div>
 <nav class="tabs" aria-label="Main"><ul id="tabs"></ul></nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
 "use strict";
 // ================= Dates (local calendar dates as YYYY-MM-DD) =================
@@ -224,30 +225,41 @@ const cat=k=>CATS.find(c=>c[0]===k)||[k,k,"🍽️"];
 const catLabel=k=>cat(k)[1];
 
 // ================= State & storage =================
-// Private state lives in the viewer's own db subtree (only they can read it). A privacy-filtered
-// summary goes to public/<id> for friends. Without db, the page falls back to this browser only.
+// Entries are always kept in this browser. With an account, they also sync to the
+// Treatly database, and a privacy-filtered summary is shared with accepted friends.
+// Project settings (public by design; row-level security protects the data):
+const SUPABASE_URL="__SUPABASE_URL__";
+const SUPABASE_KEY="__SUPABASE_KEY__";
+const CLOUD=/^https:\/\//.test(SUPABASE_URL)||/^http:\/\/127\./.test(SUPABASE_URL);
+const EMAIL_DOMAIN="users.treatly.app";
 const EMOJIS=["🍩","🍕","🍔","🌮","🍦","🧁","🍪","🥑","🍓","🥨","🐻","🦊","🐼","🐸","🌻","⭐"];
 const COLORS=["peach","mint","sky","lilac","lemon","rose"];
 const PRIV=[["logStatus","Daily logging status","Whether you've logged today, and your streak"],["dailyCounts","Daily cheat meal counts",""],["categories","Food categories","What kind of food you logged"],["monthly","Monthly totals",""],["goal","Goal progress","Your allowance, how much you've used, special occasions"],["history","Historical records","Your calendar of past days"]];
 function blankState(){return{v:1,profile:{name:"",emoji:"🍩",color:"peach",private:false},logs:{},goals:[],exceptions:[],privacy:{logStatus:true,dailyCounts:true,categories:false,monthly:true,goal:true,history:false},feed:[]}}
 let S=blankState();
-const ui={tab:"home",flow:null,calMonth:null,calSel:null,insMonth:null,goalForm:null,excForm:null,msg:null,editProfile:false,friendSel:null};
-const net={mode:"local",db:null,uid:null,writable:true,others:[],cheers:{},loaded:false,saving:Promise.resolve(),lastPublic:""};
-const IN_CLAUDE=!!(window.claude&&window.claude.use);
+const ui={tab:"home",flow:null,calMonth:null,calSel:null,insMonth:null,goalForm:null,excForm:null,msg:null,editProfile:false,friendSel:null,auth:null,authErr:null,busy:false,found:null};
+const net={mode:"local",loaded:false,sb:null,me:null,invite:null,friends:[],incoming:[],outgoing:[],cheers:[],lastSummary:"",timer:null,pendingInvite:null,inviter:null};
+const IN_CLAUDE=false;
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()).replace(/[^a-z0-9-]/gi,"").slice(0,32);
+const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
 
-function loadLocal(){try{const j=localStorage.getItem("treatly-state");if(j)S={...blankState(),...JSON.parse(j)}}catch{}}
-async function save(){
-  if(net.mode==="local"){try{localStorage.setItem("treatly-state",JSON.stringify(S))}catch{}return}
-  const body=JSON.parse(JSON.stringify(S));
-  net.saving=net.saving.then(async()=>{
-    try{await net.db.doc(`data/users/${net.uid}/state`).set(body)}catch(e){
-      if(e&&e.code==="invalid_argument"){net.mode="local";try{localStorage.setItem("treatly-state",JSON.stringify(S))}catch{}render();return}
-      flash("err","Couldn't save. Check your connection and try again.");return}
-    await publishPublic();
-  });return net.saving}
+function loadLocal(){const j=ls.get("treatly-state");if(j){try{S={...blankState(),...JSON.parse(j)}}catch{}}}
+const hasData=st=>st&&(Object.keys(st.logs||{}).length>0||(st.goals||[]).length>0);
+function save(){
+  ls.set("treatly-state",JSON.stringify(S));
+  if(net.mode!=="cloud")return;
+  clearTimeout(net.timer);net.timer=setTimeout(pushCloud,700)}
+async function pushCloud(){
+  if(net.mode!=="cloud")return;const sb=net.sb,id=net.me.id;
+  const {error}=await sb.from("user_state").update({state:S,updated_at:new Date().toISOString()}).eq("user_id",id);
+  if(error){flash("err","Couldn't sync. Your entries are safe on this phone and will sync when you're back online.");return}
+  try{if(S.profile.private){if(net.lastSummary!=="deleted"){await sb.from("summaries").delete().eq("user_id",id);net.lastSummary="deleted"}}
+    else{const o=publicSummary(),key=JSON.stringify({...o,updated:0});if(key!==net.lastSummary){await sb.from("summaries").upsert({user_id:id,data:o,updated_at:new Date().toISOString()});net.lastSummary=key}}}catch{}
+  if((S.profile.name&&net.me.display_name!==S.profile.name)||net.me.avatar_emoji!==S.profile.emoji||net.me.avatar_color!==S.profile.color){
+    const upd={display_name:(S.profile.name||net.me.username).slice(0,40),avatar_emoji:S.profile.emoji,avatar_color:S.profile.color};
+    const r=await sb.from("profiles").update(upd).eq("id",id);if(!r.error)Object.assign(net.me,upd)}}
 function publicSummary(){
-  const t=todayStr(),p=S.privacy,o={name:S.profile.name||"Friend",emoji:S.profile.emoji,color:S.profile.color,updated:new Date().toISOString(),today:t};
+  const t=todayStr(),p=S.privacy,o={updated:new Date().toISOString(),today:t};
   const tl=S.logs[t];
   if(p.logStatus){o.lastLog=Object.keys(S.logs).sort().pop()||null;o.streak=streak(S.logs,t)}
   if(p.dailyCounts&&tl)o.todayMeals=tl.m;
@@ -257,32 +269,99 @@ function publicSummary(){
   if(p.history){o.history={};for(const d of days(addMonths(som(t),-1),t)){const l=S.logs[d];if(l)o.history[d]=p.dailyCounts?l.m:-1}}
   o.feed=S.feed.filter(f=>({logged:p.logStatus,streak:p.logStatus,goal:p.goal,occasion:p.goal,recap:true})[f.kind]).slice(0,15);
   return o}
-async function publishPublic(){
-  if(net.mode!=="db"||!net.writable)return;const ref=net.db.doc(`public/${net.uid}`);
-  try{if(S.profile.private){if(net.lastPublic!=="deleted"){await ref.delete();net.lastPublic="deleted"}return}
-    const o=publicSummary(),key=JSON.stringify({...o,updated:0});if(key===net.lastPublic)return;await ref.set(o);net.lastPublic=key}catch{}}
 function post(kind,text,key){if(key&&S.feed.some(f=>f.key===key))return;S.feed.unshift({id:uid(),kind,text,key:key||null,at:new Date().toISOString()});S.feed=S.feed.slice(0,40)}
+
+// ---- accounts (username + password; no email needed) ----
+const toEmail=u=>`${u.toLowerCase()}@${EMAIL_DOMAIN}`;
+function inviteUrl(){return net.invite?`${location.origin}${location.pathname}?invite=${net.invite}`:location.href.split(/[?#]/)[0]}
+async function startCloud(session){
+  const sb=net.sb,id=session.user.id;
+  const [{data:prof},{data:st}]=await Promise.all([sb.from("profiles").select("*").eq("id",id).single(),sb.from("user_state").select("state,invite_code").eq("user_id",id).single()]);
+  if(!prof||!st){flash("err","Couldn't load your account. Please try again.");return}
+  net.me=prof;net.invite=st.invite_code;net.mode="cloud";
+  const cloudState=st.state&&Object.keys(st.state).length?{...blankState(),...st.state}:null;
+  // Bring along anything logged on this phone; the account's copy wins on the same day.
+  if(hasData(cloudState)){const local=S;S=cloudState;if(hasData(local))S.logs={...local.logs,...S.logs}}
+  if(!S.profile.name)S.profile.name=prof.display_name;
+  ls.set("treatly-state",JSON.stringify(S));
+  await pushCloud();
+  const code=net.pendingInvite;if(code){net.pendingInvite=null;ls.del("treatly-invite");const r=await sb.rpc("accept_invite",{p_code:code});if(!r.error){ui.tab="friends";flash("good","You're now friends! 🎉");await loadFriends();return true}}
+  await loadFriends();return false}
+async function loadFriends(){
+  if(net.mode!=="cloud")return;const sb=net.sb,me=net.me.id;
+  const {data:fs}=await sb.from("friendships").select("*");
+  const rows=fs||[],other=f=>f.requester_id===me?f.addressee_id:f.requester_id,ids=[...new Set(rows.map(other))];
+  const [{data:profs},{data:sums},{data:ch}]=await Promise.all([
+    ids.length?sb.from("profiles").select("*").in("id",ids):{data:[]},
+    ids.length?sb.from("summaries").select("*").in("user_id",ids):{data:[]},
+    sb.from("cheers").select("user_id,owner_id,item_id")]);
+  const P=new Map((profs||[]).map(x=>[x.id,x])),Sm=new Map((sums||[]).map(x=>[x.user_id,x.data]));
+  const card=id=>{const p=P.get(id)||{};return{id,username:p.username,name:p.display_name||"Friend",emoji:p.avatar_emoji||"🙂",color:p.avatar_color||"peach",...(Sm.get(id)||{})}};
+  net.friends=rows.filter(f=>f.status==="accepted").map(f=>({...card(other(f)),fid:f.id})).sort((a,b)=>a.name.localeCompare(b.name));
+  net.incoming=rows.filter(f=>f.status==="pending"&&f.addressee_id===me).map(f=>({...card(f.requester_id),fid:f.id}));
+  net.outgoing=rows.filter(f=>f.status==="pending"&&f.requester_id===me).map(f=>({...card(f.addressee_id),fid:f.id}));
+  net.cheers=ch||[];render()}
 
 async function init(){
   loadLocal();
-  const use=window.claude&&window.claude.use?window.claude.use.bind(window.claude):null;
-  if(use){try{
-    const[user,db]=await Promise.all([use("user"),use("db")]);
-    const id=user?await user.id():null;
-    // Visitors who can't write here (outside the organization, view-only) keep entries on their device.
-    let canWrite=null;try{canWrite=user?await user.can("data.write"):null}catch{}
-    if(db&&id&&canWrite!==false){net.db=db;net.uid=id;net.mode="db";
-      try{const nm=await user.name();if(nm)net.defaultName=nm.split(" ")[0]}catch{}
-      db.doc(`data/users/${id}/state`).onSnapshot(snap=>{
-        if(snap.exists&&!snap.metadata.hasPendingWrites){S={...blankState(),...snap.data()};S=JSON.parse(JSON.stringify(S))}
-        if(!snap.exists&&!net.loaded&&!S.profile.name&&net.defaultName)S.profile.name=net.defaultName;
-        net.loaded=true;render();if(snap.exists)publishPublic()},()=>{});
-      db.collection("public").onSnapshot(q=>{net.others=q.docs.filter(d=>d.id!==id).map(d=>({id:d.id,...d.data()}));render()},()=>{});
-      db.collection("cheers").onSnapshot(q=>{const c={};for(const d of q.docs)c[d.id]=(d.data().items)||{};net.cheers=c;render()},()=>{});
-      return}
-  }catch{}}
-  net.loaded=true;render()
-}
+  const params=new URLSearchParams(location.search),inv=params.get("invite");
+  if(inv&&/^[0-9a-f]{6,32}$/i.test(inv)){ls.set("treatly-invite",inv);history.replaceState(null,"",location.pathname)}
+  net.pendingInvite=ls.get("treatly-invite");
+  if(CLOUD&&window.supabase){
+    net.sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+    try{
+      const {data}=await net.sb.auth.getSession();
+      if(data.session){net.loaded=true;render();await startCloud(data.session)}
+      else{
+        if(net.pendingInvite){const r=await net.sb.rpc("invite_preview",{p_code:net.pendingInvite});net.inviter=r.data&&r.data[0]||null;ui.auth="signup"}
+        else if(ls.get("treatly-show-login")){ls.del("treatly-show-login");ui.auth="login"}
+        else if(!ls.get("treatly-local-ok"))ui.auth=hasData(S)?null:"signup";
+      }
+    }catch{}
+    setInterval(()=>{if(net.mode==="cloud"&&ui.tab==="friends"&&!document.hidden)loadFriends()},60000);
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&net.mode==="cloud")loadFriends()});
+  }
+  net.loaded=true;render()}
+
+async function doAuth(kind){
+  const v=id=>(document.getElementById(id)||{}).value||"";
+  const username=v("au-user").trim().replace(/^@/,"").toLowerCase(),password=v("au-pass"),name=v("au-name").trim();
+  ui.authErr=null;
+  if(!/^[a-z0-9_]{3,20}$/.test(username)){ui.authErr="Usernames are 3–20 characters: letters, numbers or _.";return render()}
+  if(password.length<(kind==="signup"?8:1)){ui.authErr=kind==="signup"?"Use at least 8 characters for your password.":"Enter your password.";return render()}
+  if(kind==="signup"&&!name){ui.authErr="Add your name.";return render()}
+  ui.busy=true;render();const sb=net.sb;
+  try{
+    if(kind==="signup"){
+      const {data:ok}=await sb.rpc("username_available",{p_username:username});
+      if(!ok){ui.authErr=`@${username} is taken. Try another one.`;return}
+      const {data,error}=await sb.auth.signUp({email:toEmail(username),password,options:{data:{username,display_name:name}}});
+      if(error){ui.authErr=/rate/i.test(error.message)?"Too many sign-ups right now. Try again in a minute.":error.message;return}
+      if(!data.session){ui.authErr="Sign-up needs one setting changed: in Supabase, turn off Authentication → Email → Confirm email.";return}
+      if(!S.profile.name)S.profile.name=name;
+      ui.auth=null;if(!await startCloud(data.session))flash("good",`Welcome, ${name.split(" ")[0]}! Your entries now sync and friends can find you as @${username}.`)
+    }else{
+      const {data,error}=await sb.auth.signInWithPassword({email:toEmail(username),password});
+      if(error){ui.authErr="That username and password don't match.";return}
+      ui.auth=null;await startCloud(data.session)}
+  }catch{ui.authErr="Couldn't reach Treatly. Check your connection and try again."}
+  finally{ui.busy=false;render()}}
+
+function screenAuth(){
+  const su=ui.auth==="signup",i=net.inviter;
+  return `<header style="padding-top:18px;display:flex;flex-direction:column;gap:6px"><p style="font:800 22px var(--display);color:var(--brand-strong)">Treatly</p>
+  ${i?`<div class="row" style="margin-top:8px">${av(i.avatar_emoji,i.avatar_color,52)}<p style="font-weight:700">${esc(i.display_name)} invited you to track cheat meals together.</p></div>`:""}
+  <h1>${su?"Create your account":"Welcome back"}</h1><p class="muted">${su?"No email needed. Pick a username so friends can find you.":"Log in with your username."}</p></header>
+  <section class="card">
+   ${su?`<label class="f">Your name<input type="text" id="au-name" maxlength="40" autocomplete="given-name" placeholder="Sam"></label>`:""}
+   <label class="f">Username<input type="text" id="au-user" maxlength="21" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" placeholder="sam_eats"></label>
+   <label class="f">Password<input type="password" id="au-pass" style="width:100%;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 12px;font:inherit;font-size:16px" autocomplete="${su?"new-password":"current-password"}" ${su?'placeholder="At least 8 characters"':""}></label>
+   ${ui.authErr?`<p class="notice n-err">${esc(ui.authErr)}</p>`:""}
+   <button class="btn primary wide" data-a="${su?"do-signup":"do-login"}" ${ui.busy?"disabled":""}>${ui.busy?"One moment…":su?"Create account":"Log in"}</button>
+   <button class="link" style="text-align:center" data-a="${su?"show-login":"show-signup"}">${su?"I already have an account":"New here? Create an account"}</button>
+  </section>
+  <button class="btn wide" data-a="skip-auth">Use without an account</button>
+  <p class="tiny faint" style="text-align:center">Without an account your entries stay on this phone and you can't add friends. You can create one later.</p>`}
 
 // ================= Rendering helpers =================
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -393,7 +472,7 @@ function screenInsights(){
    <div class="row" style="align-items:flex-end"><span class="big">${s.meals}</span><span style="font-weight:700;padding-bottom:6px">cheat meal${s.meals===1?"":"s"}<br><span class="small" style="opacity:.9">on ${pl(s.cheatDays,"day")}</span></span></div>
    <div class="grid2"><div class="tile"><b>Goal</b>${r.goal?(r.goal.status==="over"?`${r.goal.used-r.goal.allowance} over a ${r.goal.allowance}-meal allowance`:`${r.goal.used} of ${r.goal.allowance} · within goal`):"No goal this month"}</div><div class="tile"><b>Top treat</b>${top?cat(top[0])[2]+" "+catLabel(top[0]):"—"}</div><div class="tile"><b>Days logged</b>${s.logged} of ${s.elapsed} (${s.rate}%)</div><div class="tile"><b>Longest clean run</b>${pl(s.longestClean,"day")}</div></div>
    ${chg!==null?`<p class="tile" style="text-align:center;font-weight:800">${chg===0?"Same as last month":`${Math.abs(chg)} ${chg<0?"fewer":"more"} than ${r.inProgress?"this point ":""}last month`}</p>`:""}
-   ${net.mode==="db"?`<button class="btn" style="background:#fff;color:#c9411f" data-a="share-recap" data-m="${m}">Share with friends</button>`:IN_CLAUDE?"":`<a class="btn" style="background:#fff;color:#c9411f;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(recapText(m,r))}">Share recap on WhatsApp</a>`}</section>`:""}`}
+   ${net.mode==="cloud"?`<button class="btn" style="background:#fff;color:#c9411f" data-a="share-recap" data-m="${m}">Share with friends</button>`:""}${`<a class="btn" style="background:#fff;color:#c9411f;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(recapText(m,r))}">Share recap on WhatsApp</a>`}</section>`:""}`}
 function recapText(m,r){const s=r.s,g=r.goal,rc=rankCats(s.cats)[0];return `My ${monthLabel(m)} Treatly recap: ${pl(s.meals,"cheat meal")} on ${pl(s.cheatDays,"day")}`+(g?(g.status==="over"?`, ${g.used-g.allowance} over my allowance`:`, within my goal (${g.used}/${g.allowance})`):"")+(rc?`. Top treat: ${catLabel(rc[0])}`:"")+`. Logged ${s.rate}% of days. Track with me: ${location.href.split("#")[0]}`}
 
 function goalFormHtml(){
@@ -442,18 +521,29 @@ function screenGoals(){
      return `<div><p style="font-weight:700">${esc(describe(x))}</p><p class="tiny muted">${x.status==="cancelled"?"Replaced before it started":duration({start:x.start,end:effEnd(x)})}</p>${res}</div>`}).join("")}${past.map(e=>`<div><p style="font-weight:700">${occ(e.occasion)[2]} ${esc(exTitle(e))}</p><p class="tiny muted">${e.status==="cancelled"?"Cancelled · ":""}${exDesc(e)}</p></div>`).join("")}</div></section>`:""}`}
 
 function screenFriends(){
-  const t=todayStr(),cards=net.others.filter(o=>o&&o.name);
-  if(net.mode!=="db")return IN_CLAUDE?`<header><h1>Friends</h1></header><section class="card"><h2>Friends need the shared link</h2><p class="small muted">Open Treatly from its claude.ai link to see friends. Right now your entries are saved in this browser only.</p></section>`
-    :`<header><h1>Friends</h1><p class="small muted">Accountability, not judgement.</p></header>${notice()}<section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">🤝</span><b>Track together</b><p class="small muted">Invite friends to use Treatly too, then share your monthly recap with each other. Your entries stay private on your phone.</p><a class="btn primary wide" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("I'm tracking my cheat meals with Treatly. One quick yes/no a day. Try it with me: "+location.href.split("#")[0])}">Invite on WhatsApp</a><button class="btn wide" data-a="share-app">Share link another way</button></section>
-    <section class="card"><h2>Share your progress</h2><p class="small muted">Send friends your monthly recap from the Insights tab, so they see your highlights without your full food log.</p><button class="btn" data-a="tab" data-t="insights">Go to my recap</button></section>`;
+  const t=todayStr();
+  if(net.mode!=="cloud")return `<header><h1>Friends</h1><p class="small muted">Accountability, not judgement.</p></header>${notice()}
+    <section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">🤝</span><b>Track together</b><p class="small muted">${CLOUD?"Create a free account to add friends, see how they're doing and cheer them on. Your entries on this phone come with you.":"Invite friends to use Treatly too, then share your monthly recap with each other."}</p>
+    ${CLOUD?`<button class="btn primary wide" data-a="show-signup">Create an account</button><button class="link" data-a="show-login">I already have an account</button>`:`<a class="btn primary wide" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("I'm tracking my cheat meals with Treatly. One quick yes/no a day. Try it with me: "+inviteUrl())}">Invite on WhatsApp</a>`}</section>`;
+  const cards=net.friends;
   if(ui.friendSel){const o=cards.find(x=>x.id===ui.friendSel);if(o)return friendDetail(o,t);ui.friendSel=null}
-  const feed=[...cards.flatMap(o=>(o.feed||[]).map(f=>({...f,owner:o}))),...S.feed.filter(f=>!S.profile.private).map(f=>({...f,owner:{id:net.uid,name:"You",emoji:S.profile.emoji,color:S.profile.color}}))].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,25);
-  const mine=(net.cheers[net.uid]||{});
-  return `<header><h1>Friends</h1><p class="small muted">Accountability, not judgement. Cheer each other on.</p></header>${notice()}
-  ${!cards.length?`<section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">🤝</span><b>Better together</b><p class="small muted">Share this page with friends using the <b>Share</b> button at the top of the page (give them <b>Contributor</b> access so they can log). Everyone who joins shows up here.</p></section>`
-  :`<p class="small muted">${cards.filter(o=>o.lastLog===t).length} of ${pl(cards.length,"friend")} logged today.</p>${cards.map(o=>friendCard(o,t)).join("")}`}
-  <section class="card"><h2>Activity</h2>${feed.length?feed.map(f=>{const k=`${f.owner.id}:${f.id}`,own=f.owner.id===net.uid,n=Object.values(net.cheers).filter(c=>c[k]).length,on=!!mine[k];
-    return `<div class="row" style="align-items:flex-start;border-top:1px solid var(--line);padding-top:10px">${av(f.owner.emoji,f.owner.color,36)}<div style="flex:1;min-width:0"><p class="small">${esc(own?"You":f.owner.name)} ${esc(f.text)}.</p><p class="tiny faint">${ago(f.at)}</p></div>${own?(n?`<span class="tiny muted">👏 ${n}</span>`:""):`<button class="btn sm" style="${on?"background:var(--brand-soft);color:var(--brand-strong)":""}" aria-pressed="${on}" data-a="cheer" data-k="${esc(k)}">👏 ${on?"Cheered":"Cheer"}${n?" · "+n:""}</button>`}</div>`}).join(""):`<p class="small muted">Updates from you and your friends appear here.</p>`}</section>`}
+  const me={id:net.me.id,name:"You",emoji:S.profile.emoji,color:S.profile.color};
+  const feed=[...cards.flatMap(o=>(o.feed||[]).map(f=>({...f,owner:o}))),...(S.profile.private?[]:publicSummary().feed).map(f=>({...f,owner:me}))].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,30);
+  const cheerCount=(o,i)=>net.cheers.filter(c=>c.owner_id===o&&c.item_id===i).length,cheered=(o,i)=>net.cheers.some(c=>c.owner_id===o&&c.item_id===i&&c.user_id===net.me.id);
+  const invMsg=`I'm tracking my cheat meals with Treatly. One quick yes/no a day. Join me and we'll keep each other on track: ${inviteUrl()}`;
+  const f=ui.found;
+  return `<header><h1>Friends</h1><p class="small muted">You're @${esc(net.me.username)}. Accountability, not judgement.</p></header>${notice()}
+  ${net.incoming.length?`<section class="card"><h2>Friend requests</h2>${net.incoming.map(r=>`<div class="row">${av(r.emoji,r.color,40)}<span style="flex:1;min-width:0"><b style="display:block">${esc(r.name)}</b><span class="tiny muted">@${esc(r.username||"")}</span></span><button class="btn sm" data-a="req-no" data-id="${r.fid}">Decline</button><button class="btn sm primary" data-a="req-yes" data-id="${r.fid}">Accept</button></div>`).join("")}</section>`:""}
+  ${!cards.length?`<section class="card" style="text-align:center;align-items:center"><span style="font-size:36px">🤝</span><b>Better together</b><p class="small muted">Invite friends with your link, or add them by username below. You'll see each other's progress here.</p></section>`
+   :`<p class="small muted">${cards.filter(o=>o.lastLog===t).length} of ${pl(cards.length,"friend")} logged today.</p>${cards.map(o=>friendCard(o,t)).join("")}`}
+  <section class="card"><h2>Invite friends</h2><p class="small muted">Anyone who opens your link and signs up becomes your friend straight away.</p>
+   <a class="btn primary wide" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(invMsg)}">Invite on WhatsApp</a>
+   <button class="btn wide" data-a="share-app">Copy or share invite link</button></section>
+  <section class="card"><h2>Add by username</h2><div class="row"><input type="text" id="find-user" placeholder="@username" autocapitalize="none" autocorrect="off" spellcheck="false" style="flex:1"><button class="btn sm primary" style="height:46px" data-a="find">Find</button></div>
+   ${f?f.none?`<p class="small muted">No one found with that username.</p>`:`<div class="row">${av(f.avatar_emoji,f.avatar_color,40)}<span style="flex:1;min-width:0"><b style="display:block">${esc(f.display_name)}</b><span class="tiny muted">@${esc(f.username)}</span></span>${f.relation==="friend"?'<span class="pill p-good">Friends</span>':f.relation==="outgoing"?'<span class="pill p-plain">Requested</span>':`<button class="btn sm primary" data-a="add-friend" data-id="${f.id}">${f.relation==="incoming"?"Accept":"Add friend"}</button>`}</div>`:""}
+   ${net.outgoing.length?`<p class="tiny muted">Waiting for: ${net.outgoing.map(r=>`${esc(r.name)} <button class="link tiny" data-a="unfriend" data-id="${r.fid}">cancel</button>`).join(", ")}</p>`:""}</section>
+  <section class="card"><h2>Activity</h2>${feed.length?feed.map(x=>{const own=x.owner.id===net.me.id,n=cheerCount(x.owner.id,x.id),on=cheered(x.owner.id,x.id);
+    return `<div class="row" style="align-items:flex-start;border-top:1px solid var(--line);padding-top:10px">${av(x.owner.emoji,x.owner.color,36)}<div style="flex:1;min-width:0"><p class="small">${esc(own?"You":x.owner.name)} ${esc(x.text)}.</p><p class="tiny faint">${ago(x.at)}</p></div>${own?(n?`<span class="tiny muted">👏 ${n}</span>`:""):`<button class="btn sm" style="${on?"background:var(--brand-soft);color:var(--brand-strong)":""}" aria-pressed="${on}" data-a="cheer" data-o="${esc(x.owner.id)}" data-i="${esc(x.id)}">👏 ${on?"Cheered":"Cheer"}${n?" · "+n:""}</button>`}</div>`}).join(""):`<p class="small muted">Updates from you and your friends appear here.</p>`}</section>`}
 function ago(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1e3);return s<60?"just now":s<3600?`${Math.floor(s/60)}m ago`:s<86400?`${Math.floor(s/3600)}h ago`:`${Math.floor(s/86400)}d ago`}
 function friendCard(o,t){const logged=o.streak!==undefined?o.lastLog===t:null,mk=t.slice(0,7);
   const row=(k,v)=>`<div class="row between small"><span class="muted">${k}</span><b>${v}</b></div>`,priv='<span class="faint" style="font-weight:500">Private</span>';
@@ -464,18 +554,19 @@ function friendCard(o,t){const logged=o.streak!==undefined?o.lastLog===t:null,mk
    <p class="tiny faint">Updated ${ago(o.updated)}</p></section>`}
 function friendDetail(o,t){const m=som(t),lead=wd(m),cells=[];for(let i=0;i<lead;i++)cells.push("<div></div>");
   for(const d of days(m,eom(m))){const v=o.history?o.history[d]:undefined,fut=d>t,st=fut?"future":v===undefined?"none":v===-1?"plain":v>0?"cheat":"clean";cells.push(`<div class="day d-${st==="plain"?"none":st}" ${st==="plain"?'style="background:var(--surface-2)"':""}>${Number(d.slice(8))}${st==="cheat"?`<small>×${v}</small>`:""}</div>`)}
-  return `<header><button class="link" data-a="friend-close">← Friends</button></header>${friendCard(o,t)}<section class="card"><h2>History · ${monthLabel(m)}</h2>${o.history?`<div class="cal">${WD.map(x=>`<div class="h">${x.slice(0,2)}</div>`).join("")}${cells.join("")}</div>`:`<p class="small muted">${esc(o.name)} keeps their daily history private.</p>`}</section>`}
+  return `<header><button class="link" data-a="friend-close">← Friends</button></header>${friendCard(o,t)}<section class="card"><h2>History · ${monthLabel(m)}</h2>${o.history?`<div class="cal">${WD.map(x=>`<div class="h">${x.slice(0,2)}</div>`).join("")}${cells.join("")}</div>`:`<p class="small muted">${esc(o.name)} keeps their daily history private.</p>`}</section>${o.fid?(ui.confirmUnfriend?`<div class="row" style="background:var(--surface-2);border-radius:14px;padding:10px"><p class="small" style="flex:1">Remove ${esc(o.name)}? You'll stop seeing each other's progress.</p><button class="btn sm" data-a="unfriend-no">Keep</button><button class="btn sm primary" data-a="unfriend" data-id="${o.fid}">Remove</button></div>`:`<button class="btn danger" data-a="unfriend-ask">Remove friend</button>`):""}`}
 
 function screenProfile(){
   const t=todayStr(),g=currentGoal(S.goals),ms=summarize(S.logs,som(t),eom(t),t),p=S.profile;
   return `<header class="row" style="padding-top:6px">${av(p.emoji,p.color,68)}<div style="flex:1;min-width:0"><h1>${esc(p.name||"Your profile")}</h1><p class="small muted">${p.private?"Hidden from friends":"Visible to friends with the link"}</p></div><button class="btn sm" data-a="edit-profile">${ui.editProfile?"Done":"Edit"}</button></header>${notice()}
   ${ui.editProfile?`<section class="card"><label class="f">Your name<input type="text" id="p-name" maxlength="40" value="${esc(p.name)}"></label><div><p class="small" style="font-weight:700;margin-bottom:6px">Avatar</p><div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px">${EMOJIS.map(e=>`<button class="chip" style="padding:0;height:40px" aria-pressed="${p.emoji===e}" aria-label="Use ${e}" data-a="p-emoji" data-v="${e}">${e}</button>`).join("")}</div><div class="row" style="margin-top:10px">${COLORS.map(c=>`<button class="avatar a-${c}" style="width:34px;height:34px;${p.color===c?"box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)":""}" aria-label="${c} background" aria-pressed="${p.color===c}" data-a="p-color" data-v="${c}"></button>`).join("")}</div></div><button class="btn primary" data-a="p-save">Save profile</button></section>`:""}
+  ${net.mode==="cloud"?`<section class="card"><div class="row between"><span><b style="display:block">@${esc(net.me.username)}</b><span class="tiny muted">Your entries sync to your account</span></span><button class="btn sm" data-a="logout">Log out</button></div></section>`:CLOUD?`<section class="card"><b>Create an account</b><p class="small muted">Add friends and keep your entries safe if you change phones. Everything you've logged comes with you.</p><button class="btn primary" data-a="show-signup">Create an account</button><button class="link" data-a="show-login">Log in</button></section>`:""}
   <div class="grid3">${stat(streak(S.logs,t),"Day streak")}${stat(ms.meals,`${monthName(t)} cheat meals`,"t-brand")}${stat(bestStreak(S.logs),"Best streak")}</div>
   <button class="card" style="flex-direction:row;align-items:center;text-align:left" data-a="tab" data-t="goals"><span style="font-size:24px">🎯</span><span style="flex:1"><b style="display:block">Goals & special occasions</b><span class="small muted">${g?esc(describe(g)):"No goal set"}</span></span><span class="faint">›</span></button>
-  <section class="card"><h2>What friends can see</h2><p class="tiny muted">Only people you share this page with can see these, and only what you switch on.</p>
+  <section class="card"><h2>What friends can see</h2><p class="tiny muted">Only friends you accept can see these, and only what you switch on.</p>
    <div class="row between"><span><b class="small" style="display:block">Private profile</b><span class="tiny muted">Hide me from friends completely</span></span><button class="toggle" role="switch" aria-checked="${p.private}" aria-label="Private profile" data-a="priv-all"></button></div>
    ${PRIV.map(([k,l,h])=>`<div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span><b class="small" style="display:block">${l}</b>${h?`<span class="tiny muted">${h}</span>`:""}</span><button class="toggle" role="switch" aria-checked="${S.privacy[k]}" aria-label="${l}" data-a="priv" data-k="${k}" ${p.private?"disabled":""}></button></div>`).join("")}</section>
-  <section class="card"><h2>${IN_CLAUDE?"About this version":"Your data"}</h2><p class="small muted">${net.mode==="db"?"Your entries are saved to your account on this page and follow you on any device where you open the link.":"Your entries are saved privately on this device, in this browser. Nobody else can see them. Keep a backup so you never lose them."}</p>${net.mode==="db"?"":`<div class="grid2"><button class="btn" data-a="export">Save a backup</button><label class="btn" style="cursor:pointer">Restore backup<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>`}</section>`}
+  <section class="card"><h2>${IN_CLAUDE?"About this version":"Your data"}</h2><p class="small muted">${net.mode==="cloud"?"Your entries are saved to your account and on this phone. Only friends you accept see what you allow above.":"Your entries are saved privately on this device, in this browser. Nobody else can see them. Keep a backup so you never lose them."}</p>${net.mode==="db"?"":`<div class="grid2"><button class="btn" data-a="export">Save a backup</button><label class="btn" style="cursor:pointer">Restore backup<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>`}</section>`}
 
 // ================= Shell, routing, events =================
 const TABS=[["home","Home",'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],["calendar","Calendar",'<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>'],["friends","Friends",'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2"/>'],["insights","Insights",'<path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/>'],["profile","Profile",'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>']];
@@ -485,7 +576,8 @@ function render(){
   document.getElementById("tabs").innerHTML=TABS.map(([k,l,i])=>`<li><button data-a="tab" data-t="${k}" ${active===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${i}</svg>${l}</button></li>`).join("");
   const scr={home:screenHome,calendar:screenCalendar,friends:screenFriends,insights:screenInsights,profile:screenProfile,goals:screenGoals}[ui.tab];
   const app=document.getElementById("app"),focusId=document.activeElement&&document.activeElement.id,sel=focusId?[document.activeElement.selectionStart,document.activeElement.selectionEnd]:null;
-  app.innerHTML=scr();
+  document.querySelector(".tabs").hidden=!!ui.auth;
+  app.innerHTML=ui.auth?screenAuth():scr();
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus();try{if(sel&&el.setSelectionRange)el.setSelectionRange(sel[0],sel[1])}catch{}}}}
 
 function newGoalForm(edit){const t=todayStr(),g=edit?currentGoal(S.goals):null;
@@ -527,7 +619,7 @@ document.addEventListener("change",ev=>{const id=ev.target.id,v=ev.target.value;
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-a]");if(!b||b.disabled)return;const a=b.dataset.a,t=todayStr(),f=ui.flow;
   const date=ui.tab==="calendar"?ui.calSel:t;
   switch(a){
-    case"tab":ui.tab=b.dataset.t;ui.goalForm=ui.excForm=null;ui.friendSel=null;ui.flow=null;window.scrollTo(0,0);break;
+    case"tab":if(b.dataset.t==="friends"&&net.mode==="cloud")loadFriends();ui.tab=b.dataset.t;ui.goalForm=ui.excForm=null;ui.friendSel=null;ui.flow=null;window.scrollTo(0,0);break;
     case"yes":flowFor(date).mode="details";break;
     case"save-no":saveLog(date,false);return;
     case"save-yes":saveLog(date,true);return;
@@ -571,14 +663,27 @@ document.addEventListener("click",ev=>{const b=ev.target.closest("[data-a]");if(
     case"priv-all":S.profile.private=!S.profile.private;save();break;
     case"priv":S.privacy[b.dataset.k]=!S.privacy[b.dataset.k];save();break;
     case"friend":ui.friendSel=b.dataset.id;window.scrollTo(0,0);break;case"friend-close":ui.friendSel=null;break;
-    case"cheer":toggleCheer(b.dataset.k);return;
-    case"share-app":{const url=location.href.split("#")[0];if(navigator.share){navigator.share({title:"Treatly",text:"Track your cheat meals with me on Treatly",url}).catch(()=>{})}else{navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>flash("good","Link copied.")).catch(()=>flash("good",url))}return}
+    case"cheer":toggleCheer(b.dataset.o,b.dataset.i);return;
+    case"show-signup":ui.auth="signup";ui.authErr=null;window.scrollTo(0,0);break;
+    case"show-login":ui.auth="login";ui.authErr=null;window.scrollTo(0,0);break;
+    case"skip-auth":ui.auth=null;ls.set("treatly-local-ok","1");break;
+    case"do-signup":doAuth("signup");return;
+    case"do-login":doAuth("login");return;
+    case"logout":net.sb.auth.signOut().finally(()=>{ls.del("treatly-state");ls.set("treatly-show-login","1");location.reload()});return;
+    case"find":{const q=document.getElementById("find-user").value.trim();if(!q)return;net.sb.rpc("find_user",{p_username:q}).then(({data})=>{ui.found=data&&data[0]?data[0]:{none:true};render()});return}
+    case"add-friend":net.sb.rpc("send_friend_request",{p_target:b.dataset.id}).then(({data,error})=>{if(error)return flash("err","Couldn't send the request.");ui.found={...ui.found,relation:data};flash("good",data==="friend"?"You're now friends! 🎉":"Friend request sent.");loadFriends()});return;
+    case"req-yes":case"req-no":net.sb.rpc("respond_friend_request",{p_request:b.dataset.id,p_accept:a==="req-yes"}).then(()=>loadFriends());return;
+    case"unfriend-ask":ui.confirmUnfriend=true;break;case"unfriend-no":ui.confirmUnfriend=false;break;
+    case"unfriend":net.sb.from("friendships").delete().eq("id",b.dataset.id).then(()=>{ui.friendSel=null;ui.confirmUnfriend=false;loadFriends()});return;
+    case"share-app":{const url=inviteUrl();if(navigator.share){navigator.share({title:"Treatly",text:"Track your cheat meals with me on Treatly",url}).catch(()=>{})}else{navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>flash("good","Link copied.")).catch(()=>flash("good",url))}return}
     case"export":{const blob=new Blob([JSON.stringify(S,null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`treatly-backup-${t}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);return}
     case"share-recap":{const m=b.dataset.m,r=monthReport(m,S,t);post("recap",`shared their ${monthLabel(m)} recap: ${pl(r.s.meals,"cheat meal")} on ${pl(r.s.cheatDays,"day")}${r.goal?(r.goal.status==="over"?`, ${r.goal.used-r.goal.allowance} over allowance`:", within goal"):""}`,`recap:${m}:${r.s.meals}`);save();flash("good","Shared with your friends' activity feed.");return}
   }
   render()});
-async function toggleCheer(k){if(net.mode!=="db")return;const mine={...(net.cheers[net.uid]||{})};if(mine[k])delete mine[k];else mine[k]=true;net.cheers={...net.cheers,[net.uid]:mine};render();
-  try{await net.db.doc(`cheers/${net.uid}`).set({items:mine})}catch{flash("err","Couldn't send your cheer.")}}
+async function toggleCheer(owner,item){if(net.mode!=="cloud")return;const me=net.me.id,on=net.cheers.some(c=>c.owner_id===owner&&c.item_id===item&&c.user_id===me);
+  net.cheers=on?net.cheers.filter(c=>!(c.owner_id===owner&&c.item_id===item&&c.user_id===me)):[...net.cheers,{user_id:me,owner_id:owner,item_id:item}];render();
+  const r=on?await net.sb.from("cheers").delete().match({user_id:me,owner_id:owner,item_id:item}):await net.sb.from("cheers").insert({user_id:me,owner_id:owner,item_id:item});
+  if(r.error)flash("err","Couldn't send your cheer.")}
 
 init();
 </script>
