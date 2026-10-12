@@ -228,8 +228,8 @@ const catLabel=k=>cat(k)[1];
 // Entries are always kept in this browser. With an account, they also sync to the
 // Treatly database, and a privacy-filtered summary is shared with accepted friends.
 // Project settings (public by design; row-level security protects the data):
-const SUPABASE_URL="__SUPABASE_URL__";
-const SUPABASE_KEY="__SUPABASE_KEY__";
+const SUPABASE_URL="https://uhpjlcfrazbpaxojlwak.supabase.co";
+const SUPABASE_KEY="sb_publishable_0IEvAxuKjxgmmPi-qbOwWQ_ZtocoeMJ";
 const CLOUD=/^https:\/\//.test(SUPABASE_URL)||/^http:\/\/127\./.test(SUPABASE_URL);
 const EMAIL_DOMAIN="users.treatly.app";
 const EMOJIS=["🍩","🍕","🍔","🌮","🍦","🧁","🍪","🥑","🍓","🥨","🐻","🦊","🐼","🐸","🌻","⭐"];
@@ -333,7 +333,8 @@ async function doAuth(kind){
   ui.busy=true;render();const sb=net.sb;
   try{
     if(kind==="signup"){
-      const {data:ok}=await sb.rpc("username_available",{p_username:username});
+      const {data:ok,error:e1}=await sb.rpc("username_available",{p_username:username});
+      if(e1){ui.authErr="Treatly's database isn't set up yet. (Owner: run setup.sql in the Supabase SQL Editor.)";return}
       if(!ok){ui.authErr=`@${username} is taken. Try another one.`;return}
       const {data,error}=await sb.auth.signUp({email:toEmail(username),password,options:{data:{username,display_name:name}}});
       if(error){ui.authErr=/rate/i.test(error.message)?"Too many sign-ups right now. Try again in a minute.":error.message;return}
