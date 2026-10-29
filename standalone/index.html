@@ -57,6 +57,7 @@ p{margin:0}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .btn{height:48px;border-radius:16px;padding:0 18px;font-weight:700;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+a.btn{color:var(--ink)}
 .btn.primary{background:var(--brand);color:var(--brand-ink)}
 .btn.sm{height:36px;border-radius:12px;padding:0 12px;font-size:13px}
 .btn.wide{width:100%}
@@ -235,10 +236,10 @@ const EMAIL_DOMAIN="users.treatly.app";
 const EMOJIS=["🍩","🍕","🍔","🌮","🍦","🧁","🍪","🥑","🍓","🥨","🐻","🦊","🐼","🐸","🌻","⭐"];
 const COLORS=["peach","mint","sky","lilac","lemon","rose"];
 const PRIV=[["logStatus","Daily logging status","Whether you've logged today, and your streak"],["dailyCounts","Daily cheat meal counts",""],["categories","Food categories","What kind of food you logged"],["monthly","Monthly totals",""],["goal","Goal progress","Your allowance, how much you've used, special occasions"],["history","Historical records","Your calendar of past days"]];
-function blankState(){return{v:1,profile:{name:"",emoji:"🍩",color:"peach",private:false},logs:{},goals:[],exceptions:[],privacy:{logStatus:true,dailyCounts:true,categories:false,monthly:true,goal:true,history:false},feed:[]}}
+function blankState(){return{v:1,profile:{name:"",emoji:"🍩",color:"peach",private:false},logs:{},goals:[],exceptions:[],privacy:{logStatus:true,dailyCounts:true,categories:false,monthly:true,goal:true,history:false},feed:[],reminder:{time:"20:00"}}}
 let S=blankState();
 const ui={tab:"home",flow:null,calMonth:null,calSel:null,insMonth:null,goalForm:null,excForm:null,msg:null,editProfile:false,friendSel:null,auth:null,authErr:null,busy:false,found:null};
-const net={mode:"local",loaded:false,sb:null,me:null,invite:null,friends:[],incoming:[],outgoing:[],cheers:[],lastSummary:"",timer:null,pendingInvite:null,inviter:null};
+const net={mode:"local",loaded:false,sb:null,me:null,invite:null,friends:[],incoming:[],outgoing:[],cheers:[],nudgesIn:[],nudgesOut:[],people:new Map(),lastSummary:"",timer:null,pendingInvite:null,inviter:null};
 const IN_CLAUDE=false;
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()).replace(/[^a-z0-9-]/gi,"").slice(0,32);
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
@@ -291,16 +292,41 @@ async function loadFriends(){
   if(net.mode!=="cloud")return;const sb=net.sb,me=net.me.id;
   const {data:fs}=await sb.from("friendships").select("*");
   const rows=fs||[],other=f=>f.requester_id===me?f.addressee_id:f.requester_id,ids=[...new Set(rows.map(other))];
-  const [{data:profs},{data:sums},{data:ch}]=await Promise.all([
+  const [{data:profs},{data:sums},{data:ch},{data:nd}]=await Promise.all([
     ids.length?sb.from("profiles").select("*").in("id",ids):{data:[]},
     ids.length?sb.from("summaries").select("*").in("user_id",ids):{data:[]},
-    sb.from("cheers").select("user_id,owner_id,item_id")]);
+    sb.from("cheers").select("user_id,owner_id,item_id,created_at"),
+    sb.from("nudges").select("*").gte("day",addDays(todayStr(),-2))]);
   const P=new Map((profs||[]).map(x=>[x.id,x])),Sm=new Map((sums||[]).map(x=>[x.user_id,x.data]));
   const card=id=>{const p=P.get(id)||{};return{id,username:p.username,name:p.display_name||"Friend",emoji:p.avatar_emoji||"🙂",color:p.avatar_color||"peach",...(Sm.get(id)||{})}};
   net.friends=rows.filter(f=>f.status==="accepted").map(f=>({...card(other(f)),fid:f.id})).sort((a,b)=>a.name.localeCompare(b.name));
   net.incoming=rows.filter(f=>f.status==="pending"&&f.addressee_id===me).map(f=>({...card(f.requester_id),fid:f.id}));
   net.outgoing=rows.filter(f=>f.status==="pending"&&f.requester_id===me).map(f=>({...card(f.addressee_id),fid:f.id}));
-  net.cheers=ch||[];render()}
+  net.cheers=ch||[];
+  net.people=new Map((profs||[]).map(x=>[x.id,{name:x.display_name,emoji:x.avatar_emoji,color:x.avatar_color}]));
+  net.nudgesIn=(nd||[]).filter(n=>n.recipient_id===me&&!n.seen_at);
+  net.nudgesOut=(nd||[]).filter(n=>n.sender_id===me&&n.day===todayStr()).map(n=>n.recipient_id);
+  render()}
+
+// ---- reminders ----
+const appUrl=()=>location.origin+location.pathname;
+function remTime(){const t=(S.reminder&&S.reminder.time)||"20:00";return /^\d\d:\d\d$/.test(t)?t:"20:00"}
+function fmtTime(hm){const[h,m]=hm.split(":").map(Number);return new Date(2000,0,1,h,m).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}
+function calTimes(){const t=todayStr().replace(/-/g,""),[h,m]=remTime().split(":").map(Number),e=h*60+m+10,p=n=>String(n).padStart(2,"0");
+  return{start:`${t}T${p(h)}${p(m)}00`,end:`${t}T${p(Math.min(23,Math.floor(e/60)))}${p(e>=1440?59:e%60)}00`}}
+function icsText(){const{start,end}=calTimes(),stamp=new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Treatly//Daily reminder//EN","CALSCALE:GREGORIAN","BEGIN:VEVENT",`UID:treatly-daily-${Date.now()}@treatly`,`DTSTAMP:${stamp}`,`DTSTART:${start}`,`DTEND:${end}`,"RRULE:FREQ=DAILY","SUMMARY:Log today in Treatly",`DESCRIPTION:Did you eat any junk food or have a cheat meal today? ${appUrl()}`,`URL:${appUrl()}`,"BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Log today in Treatly","TRIGGER:PT0M","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n")+"\r\n"}
+function googleCalUrl(){const{start,end}=calTimes();return "https://calendar.google.com/calendar/render?"+new URLSearchParams({action:"TEMPLATE",text:"Log today in Treatly",details:`Did you eat any junk food or have a cheat meal today? ${appUrl()}`,dates:`${start}/${end}`,recur:"RRULE:FREQ=DAILY"})}
+function nowHM(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+function friendsInbox(){
+  if(net.mode!=="cloud")return"";const me=net.me.id,seen=ls.get("treatly-cheers-seen")||"",since=new Date(Date.now()-3*864e5).toISOString();
+  const who=id=>net.people.get(id)||{name:"A friend",emoji:"🙂",color:"peach"};
+  const items=[...net.nudgesIn.map(n=>({at:n.created_at,p:who(n.sender_id),text:`reminded you to log ${n.day===todayStr()?"today":"your meals"}`,icon:"👋"})),
+    ...net.cheers.filter(c=>c.owner_id===me&&c.user_id!==me&&c.created_at>since&&c.created_at>seen).map(c=>{const f=S.feed.find(x=>x.id===c.item_id);return{at:c.created_at,p:who(c.user_id),text:f?`cheered: you ${f.text}`:"cheered you on",icon:"👏"}})]
+    .sort((a,b)=>b.at.localeCompare(a.at));
+  if(!items.length)return"";
+  return `<section class="card" style="border-color:var(--brand);gap:10px" aria-label="From your friends"><div class="row between"><h2>From your friends</h2><button class="btn sm" data-a="inbox-clear">Got it</button></div>
+   ${items.slice(0,6).map(i=>`<div class="row" style="align-items:flex-start">${av(i.p.emoji,i.p.color,34)}<p class="small" style="flex:1"><b>${esc(i.p.name)}</b> ${esc(i.text)} ${i.icon}<br><span class="tiny faint">${ago(i.at)}</span></p></div>`).join("")}</section>`}
 
 async function init(){
   loadLocal();
@@ -420,6 +446,8 @@ function screenHome(){
   return `<header class="row between" style="align-items:flex-start;padding-top:6px"><div><p class="small muted">${shortD(t)}</p><h1>${greet}${S.profile.name?", "+esc(S.profile.name.split(" ")[0]):""}</h1></div>${sk?`<span class="pill p-warn" style="font-size:14px;padding:6px 12px" title="Days logged in a row">🔥 ${sk}-day streak</span>`:""}</header>
   ${notice()}
   ${first?`<div class="card" style="background:var(--brand-soft);border-color:transparent"><h2>Welcome to Treatly 🎉</h2><p class="small">Answer one quick question each day. Then set a goal so you can see how you're doing. Everything is saved automatically.${net.mode==="local"?" (Right now entries are saved in this browser only.)":""}</p></div>`:""}
+  ${friendsInbox()}
+  ${!tl&&nowHM()>=remTime()?`<p class="notice n-info" role="status">⏰ It's past ${fmtTime(remTime())}. Take two seconds to log today.</p>`:""}
   <section class="card" aria-labelledby="tt"><div class="row between"><h2 id="tt">Today's log</h2><span class="pill ${tl?"p-good":"p-plain"}">${tl?"Completed":"Not logged yet"}</span></div>${logFlow(t)}</section>
   ${missed?`<button class="card" style="flex-direction:row;align-items:center;border-style:dashed;padding:12px 16px;text-align:left" data-a="goto-cal" data-d="${y}"><span>🗓️</span><span class="small" style="flex:1">You didn't log yesterday. <b>Add it now</b></span><span class="faint">→</span></button>`:""}
   ${ex?`<div class="notice n-info" style="display:flex;gap:10px;align-items:center"><span style="font-size:20px">${occ(ex.occasion)[2]}</span><span><b>${esc(exTitle(ex))}</b> ${ex.start<=t?`allowance is on until ${med(ex.end)}. Then your usual goal returns.`:`starts ${med(ex.start)}.`}</span></div>`:""}
@@ -552,6 +580,8 @@ function friendCard(o,t){const logged=o.streak!==undefined?o.lastLog===t:null,mk
    ${row("Today's log",logged===null?priv:logged?"Completed":"Not yet")}${row("Cheat meals today",o.todayMeals!==undefined&&logged?o.todayMeals:logged===false?"—":logged&&o.todayMeals===undefined?priv:"—")}${row(`${monthName(t)} cheat meals`,o.month&&o.month.key===mk?o.month.meals:o.month?0:priv)}
    ${o.occasion&&o.occasion.end>=t?`<p class="notice n-info small">${esc(o.occasion.emoji)} ${esc(o.occasion.title)} until ${med(o.occasion.end)}</p>`:""}
    ${o.goal?`<div style="background:var(--surface-2);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px"><div class="row between"><b class="small">${esc(o.goal.label)}: ${o.goal.used} of ${o.goal.allowance} used</b>${pill(o.goal.status)}</div>${bar(o.goal.used,o.goal.allowance,o.goal.status,o.name+" goal")}<p class="tiny muted">Remaining: ${Math.max(0,o.goal.allowance-o.goal.used)}</p></div>`:`<p class="tiny faint">Goal progress is private or not set.</p>`}
+   ${o.fid&&o.lastLog!==t?`<div class="row wrapflex">${net.nudgesOut.includes(o.id)?`<span class="small muted" style="flex:1">👋 You nudged ${esc(o.name)} today.</span>`
+     :`<button class="btn sm primary" data-a="nudge" data-id="${esc(o.id)}" data-n="${esc(o.name)}">👋 Nudge to log</button>`}<a class="btn sm" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`Hey ${o.name}! Friendly reminder to log today's meals in Treatly 🍩 ${appUrl()}`)}">Remind on WhatsApp</a></div>`:""}
    <p class="tiny faint">Updated ${ago(o.updated)}</p></section>`}
 function friendDetail(o,t){const m=som(t),lead=wd(m),cells=[];for(let i=0;i<lead;i++)cells.push("<div></div>");
   for(const d of days(m,eom(m))){const v=o.history?o.history[d]:undefined,fut=d>t,st=fut?"future":v===undefined?"none":v===-1?"plain":v>0?"cheat":"clean";cells.push(`<div class="day d-${st==="plain"?"none":st}" ${st==="plain"?'style="background:var(--surface-2)"':""}>${Number(d.slice(8))}${st==="cheat"?`<small>×${v}</small>`:""}</div>`)}
@@ -564,6 +594,11 @@ function screenProfile(){
   ${net.mode==="cloud"?`<section class="card"><div class="row between"><span><b style="display:block">@${esc(net.me.username)}</b><span class="tiny muted">Your entries sync to your account</span></span><button class="btn sm" data-a="logout">Log out</button></div></section>`:CLOUD?`<section class="card"><b>Create an account</b><p class="small muted">Add friends and keep your entries safe if you change phones. Everything you've logged comes with you.</p><button class="btn primary" data-a="show-signup">Create an account</button><button class="link" data-a="show-login">Log in</button></section>`:""}
   <div class="grid3">${stat(streak(S.logs,t),"Day streak")}${stat(ms.meals,`${monthName(t)} cheat meals`,"t-brand")}${stat(bestStreak(S.logs),"Best streak")}</div>
   <button class="card" style="flex-direction:row;align-items:center;text-align:left" data-a="tab" data-t="goals"><span style="font-size:24px">🎯</span><span style="flex:1"><b style="display:block">Goals & special occasions</b><span class="small muted">${g?esc(describe(g)):"No goal set"}</span></span><span class="faint">›</span></button>
+  <section class="card" id="reminders"><h2>Daily reminder</h2>
+   <label class="f">Remind me at<input type="time" id="rem-time" value="${remTime()}"></label>
+   <p class="small muted">Add the reminder to your phone's calendar and you'll get a notification every day at this time, with a link back here. If you open Treatly after this time without logging, you'll also see a reminder on Home.</p>
+   <div class="grid2"><button class="btn" data-a="ics">📅 Phone calendar</button><a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(googleCalUrl())}">Google Calendar</a></div>
+   <p class="tiny faint">Changed the time? Remove the old calendar event and add it again.${net.mode==="cloud"?" Friends can also nudge you from their Friends tab.":""}</p></section>
   <section class="card"><h2>What friends can see</h2><p class="tiny muted">Only friends you accept can see these, and only what you switch on.</p>
    <div class="row between"><span><b class="small" style="display:block">Private profile</b><span class="tiny muted">Hide me from friends completely</span></span><button class="toggle" role="switch" aria-checked="${p.private}" aria-label="Private profile" data-a="priv-all"></button></div>
    ${PRIV.map(([k,l,h])=>`<div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span><b class="small" style="display:block">${l}</b>${h?`<span class="tiny muted">${h}</span>`:""}</span><button class="toggle" role="switch" aria-checked="${S.privacy[k]}" aria-label="${l}" data-a="priv" data-k="${k}" ${p.private?"disabled":""}></button></div>`).join("")}</section>
@@ -613,6 +648,7 @@ document.addEventListener("input",ev=>{const id=ev.target.id,v=ev.target.value;
   if(id==="x-label"&&ui.excForm)ui.excForm.label=v;});
 document.addEventListener("change",ev=>{const id=ev.target.id,v=ev.target.value;if(!v)return;
   if(id==="import-file"){const file=ev.target.files[0];if(!file)return;file.text().then(txt=>{const d=JSON.parse(txt);if(!d||typeof d.logs!=="object"||!Array.isArray(d.goals))throw 0;S={...blankState(),...d};save();flash("good","Backup restored.")}).catch(()=>flash("err","That file isn't a Treatly backup."));return}
+  if(id==="rem-time"&&/^\d\d:\d\d$/.test(v)){S.reminder={...(S.reminder||{}),time:v};save();render();return}
   if(id==="g-start"&&ui.goalForm){ui.goalForm.start=v;if(ui.goalForm.customEnd<v)ui.goalForm.customEnd=v;render()}
   if(id==="g-end"&&ui.goalForm){ui.goalForm.customEnd=v;render()}
   if(id==="x-start"&&ui.excForm){ui.excForm.start=v;if(ui.excForm.end<v)ui.excForm.end=v;render()}
@@ -665,6 +701,12 @@ document.addEventListener("click",ev=>{const b=ev.target.closest("[data-a]");if(
     case"priv":S.privacy[b.dataset.k]=!S.privacy[b.dataset.k];save();break;
     case"friend":ui.friendSel=b.dataset.id;window.scrollTo(0,0);break;case"friend-close":ui.friendSel=null;break;
     case"cheer":toggleCheer(b.dataset.o,b.dataset.i);return;
+    case"nudge":{const id=b.dataset.id,n=b.dataset.n;b.disabled=true;net.sb.from("nudges").insert({recipient_id:id,day:t}).then(({error})=>{
+      if(error&&error.code!=="23505"){b.disabled=false;return flash("err","Couldn't send the nudge. Try again.")}
+      net.nudgesOut=[...net.nudgesOut,id];flash("good",error?`You already nudged ${n} today.`:`Nudge sent! ${n} will see it next time they open Treatly.`)});return}
+    case"inbox-clear":{ls.set("treatly-cheers-seen",new Date().toISOString());const ids=net.nudgesIn.map(n=>n.id);net.nudgesIn=[];render();
+      if(ids.length)net.sb.from("nudges").update({seen_at:new Date().toISOString()}).in("id",ids).then(()=>{});return}
+    case"ics":{const blob=new Blob([icsText()],{type:"text/calendar"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="treatly-daily-reminder.ics";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);flash("good","Open the downloaded file to add the daily reminder to your calendar.");return}
     case"show-signup":ui.auth="signup";ui.authErr=null;window.scrollTo(0,0);break;
     case"show-login":ui.auth="login";ui.authErr=null;window.scrollTo(0,0);break;
     case"skip-auth":ui.auth=null;ls.set("treatly-local-ok","1");break;

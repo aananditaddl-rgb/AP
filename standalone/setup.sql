@@ -1,5 +1,6 @@
 -- Treatly web app: database setup.
--- Run this once in your Supabase project: SQL Editor → New query → paste → Run.
+-- Run this in your Supabase project: SQL Editor → New query → paste → Run.
+-- Safe to run again after an update: it only adds what is missing.
 --
 -- Each person's entries are private to them. Friends only ever see the summary
 -- that person's app chooses to share (based on their privacy settings), and only
@@ -240,3 +241,39 @@ revoke execute on function public.is_my_friend(uuid), public.find_user(text), pu
 grant execute on function public.is_my_friend(uuid), public.find_user(text), public.send_friend_request(uuid),
   public.respond_friend_request(uuid, boolean), public.accept_invite(text), public.delete_my_account() to authenticated;
 grant execute on function public.username_available(text), public.invite_preview(text) to anon, authenticated;
+
+-- ---------------------------------------------------------------- nudges
+-- A friend can remind you to log, at most once per day.
+
+create table if not exists public.nudges (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  recipient_id uuid not null references public.profiles (id) on delete cascade,
+  day date not null,
+  created_at timestamptz not null default now(),
+  seen_at timestamptz,
+  unique (sender_id, recipient_id, day),
+  check (sender_id <> recipient_id)
+);
+create index if not exists nudges_recipient on public.nudges (recipient_id, day desc);
+
+alter table public.nudges enable row level security;
+
+drop policy if exists nudges_select on public.nudges;
+create policy nudges_select on public.nudges for select to authenticated
+  using ((select auth.uid()) in (sender_id, recipient_id));
+drop policy if exists nudges_insert on public.nudges;
+create policy nudges_insert on public.nudges for insert to authenticated
+  with check (
+    sender_id = (select auth.uid())
+    and public.is_my_friend(recipient_id)
+    and day between (now() at time zone 'utc')::date - 1 and (now() at time zone 'utc')::date + 1);
+drop policy if exists nudges_seen on public.nudges;
+create policy nudges_seen on public.nudges for update to authenticated
+  using (recipient_id = (select auth.uid())) with check (recipient_id = (select auth.uid()));
+drop policy if exists nudges_delete on public.nudges;
+create policy nudges_delete on public.nudges for delete to authenticated
+  using ((select auth.uid()) in (sender_id, recipient_id));
+
+revoke update on public.nudges from anon, authenticated;
+grant update (seen_at) on public.nudges to authenticated;
